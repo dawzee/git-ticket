@@ -1,6 +1,8 @@
-module github.com/MichaelMure/git-bug
+module github.com/daedaleanai/git-ticket
 
 go 1.11
+
+replace github.com/MichaelMure/git-bug => ./
 
 require (
 	github.com/99designs/gqlgen v0.10.3-0.20200209012558-b7a58a1c0e4b
