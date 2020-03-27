@@ -18,7 +18,7 @@ func TestOperationPackSerialize(t *testing.T) {
 	createOp := NewCreateOp(rene, time.Now().Unix(), "title", "message", nil)
 	setTitleOp := NewSetTitleOp(rene, time.Now().Unix(), "title2", "title1")
 	addCommentOp := NewAddCommentOp(rene, time.Now().Unix(), "message2", nil)
-	setStatusOp := NewSetStatusOp(rene, time.Now().Unix(), ClosedStatus)
+	setStatusOp := NewSetStatusOp(rene, time.Now().Unix(), MergedStatus)
 	labelChangeOp := NewLabelChangeOperation(rene, time.Now().Unix(), []Label{"added"}, []Label{"removed"})
 
 	opp.Append(createOp)

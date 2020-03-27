@@ -472,9 +472,9 @@ func updateGitlabIssueStatus(ctx context.Context, gc *gitlab.Client, repositoryI
 	var state string
 
 	switch status {
-	case bug.OpenStatus:
+	case bug.ProposedStatus:
 		state = "reopen"
-	case bug.ClosedStatus:
+	case bug.MergedStatus:
 		state = "close"
 	default:
 		panic("unknown bug state")

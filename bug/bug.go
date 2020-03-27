@@ -664,7 +664,7 @@ func (bug *Bug) LastOp() Operation {
 func (bug *Bug) Compile() Snapshot {
 	snap := Snapshot{
 		id:     bug.id,
-		Status: OpenStatus,
+		Status: ProposedStatus,
 	}
 
 	it := NewOperationIterator(bug)

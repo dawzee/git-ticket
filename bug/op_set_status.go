@@ -2,6 +2,8 @@ package bug
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -108,7 +110,8 @@ func (s *SetStatusTimelineItem) IsAuthored() {}
 
 // Convenience function to apply the operation
 func Open(b Interface, author identity.Interface, unixTime int64) (*SetStatusOperation, error) {
-	op := NewSetStatusOp(author, unixTime, OpenStatus)
+	// TODO function left in for now to maintain compatibility with graphql and termui
+	op := NewSetStatusOp(author, unixTime, ProposedStatus)
 	if err := op.Validate(); err != nil {
 		return nil, err
 	}
@@ -118,8 +121,41 @@ func Open(b Interface, author identity.Interface, unixTime int64) (*SetStatusOpe
 
 // Convenience function to apply the operation
 func Close(b Interface, author identity.Interface, unixTime int64) (*SetStatusOperation, error) {
-	op := NewSetStatusOp(author, unixTime, ClosedStatus)
+	// TODO function left in for now to maintain compatibility with graphql and termui
+	op := NewSetStatusOp(author, unixTime, MergedStatus)
 	if err := op.Validate(); err != nil {
+		return nil, err
+	}
+	b.Append(op)
+	return op, nil
+}
+
+// Convenience function to apply the operation
+func Set(b Interface, author identity.Interface, unixTime int64, status Status) (*SetStatusOperation, error) {
+	op := NewSetStatusOp(author, unixTime, status)
+	if err := op.Validate(); err != nil {
+		return nil, err
+	}
+	snap := b.Compile()
+
+	// find what workflow label this bug has
+	var selectedWfLabel string
+	for _, l := range snap.Labels {
+		if strings.Contains(string(l), "workflow:") {
+			selectedWfLabel = string(l)
+			break
+		}
+	}
+	if selectedWfLabel == "" {
+		return nil, fmt.Errorf("Ticket has no associated workflow")
+	}
+
+	selectedWf, err := FindWorkflow(selectedWfLabel)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := selectedWf.ValidateTransition(snap.Status, status); err != nil {
 		return nil, err
 	}
 	b.Append(op)

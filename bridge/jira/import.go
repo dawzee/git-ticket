@@ -519,7 +519,7 @@ func (ji *jiraImporter) ensureChange(repo *cache.RepoCache, b *cache.BugCache, e
 			statusStr, hasMap := statusMap[item.To]
 			if hasMap {
 				switch statusStr {
-				case bug.OpenStatus.String():
+				case bug.ProposedStatus.String():
 					op, err := b.OpenRaw(
 						author,
 						entry.Created.Unix(),
@@ -533,7 +533,7 @@ func (ji *jiraImporter) ensureChange(repo *cache.RepoCache, b *cache.BugCache, e
 					}
 					ji.out <- core.NewImportStatusChange(op.Id())
 
-				case bug.ClosedStatus.String():
+				case bug.MergedStatus.String():
 					op, err := b.CloseRaw(
 						author,
 						entry.Created.Unix(),
@@ -611,8 +611,8 @@ func getStatusMap(conf core.Configuration) (map[string]string, error) {
 	mapStr, hasConf := conf[confKeyIDMap]
 	if !hasConf {
 		return map[string]string{
-			bug.OpenStatus.String():   "1",
-			bug.ClosedStatus.String(): "6",
+			bug.ProposedStatus.String():   "1",
+			bug.MergedStatus.String(): "6",
 		}, nil
 	}
 

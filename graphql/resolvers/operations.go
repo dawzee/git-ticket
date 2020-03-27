@@ -122,9 +122,9 @@ func (setTitleOperationResolver) Date(_ context.Context, obj *bug.SetTitleOperat
 
 func convertStatus(status bug.Status) (models.Status, error) {
 	switch status {
-	case bug.OpenStatus:
+	case bug.ProposedStatus:
 		return models.StatusOpen, nil
-	case bug.ClosedStatus:
+	case bug.MergedStatus:
 		return models.StatusClosed, nil
 	}
 
