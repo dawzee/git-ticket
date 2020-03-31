@@ -16,29 +16,19 @@ type Workflow struct {
 var workflowStore []Workflow
 
 // FindWorkflow searches the workflow store by name and returns a pointer to it
-func FindWorkflow(name string) (*Workflow, error) {
-
-	var selectedWf *Workflow
-	foundWf := false
+func FindWorkflow(name string) *Workflow {
 
 	for wf := range workflowStore {
 		if workflowStore[wf].label == name {
-			selectedWf = &workflowStore[wf]
-			foundWf = true
-			break
+			return &workflowStore[wf]
 		}
 	}
-	if foundWf {
-		return selectedWf, nil
-	} else {
-		return nil, fmt.Errorf("Invalid %s", name)
-	}
-
+	return nil
 }
 
 // NextStates returns a slice of next possible states in the workflow
 // for the given one
-func (w Workflow) NextStates(s Status) ([]Status, error) {
+func (w *Workflow) NextStates(s Status) ([]Status, error) {
 	var validStates []Status
 	for _, t := range w.transitions {
 		if t.start == s {
@@ -49,7 +39,7 @@ func (w Workflow) NextStates(s Status) ([]Status, error) {
 }
 
 // ValidateTransition checks if the transition is valid for a given start and end
-func (w Workflow) ValidateTransition(from, to Status) error {
+func (w *Workflow) ValidateTransition(from, to Status) error {
 	for _, t := range w.transitions {
 		if t.start == from && t.end == to {
 			return nil

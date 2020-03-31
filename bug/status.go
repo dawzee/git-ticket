@@ -16,9 +16,11 @@ const (
 	ReviewedStatus
 	AcceptedStatus
 	MergedStatus
-
-	NumStatuses
 )
+
+const FirstStatus = ProposedStatus
+const LastStatus = MergedStatus
+const NumStatuses = 7
 
 func (s Status) String() string {
 	switch s {
@@ -48,9 +50,9 @@ func (s Status) Action() string {
 	case VettedStatus:
 		return "vetted"
 	case InProgressStatus:
-		return "inprogress"
+		return "set to in progress"
 	case InReviewStatus:
-		return "inreview"
+		return "set to in review"
 	case ReviewedStatus:
 		return "reviewed"
 	case AcceptedStatus:

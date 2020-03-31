@@ -131,13 +131,13 @@ func Close(b Interface, author identity.Interface, unixTime int64) (*SetStatusOp
 }
 
 // Convenience function to apply the operation
-func Set(b Interface, author identity.Interface, unixTime int64, status Status) (*SetStatusOperation, error) {
+func SetStatus(b Interface, author identity.Interface, unixTime int64, status Status) (*SetStatusOperation, error) {
 	op := NewSetStatusOp(author, unixTime, status)
 	if err := op.Validate(); err != nil {
 		return nil, err
 	}
-	snap := b.Compile()
 
+	snap := b.Compile()
 	// find what workflow label this bug has
 	var selectedWfLabel string
 	for _, l := range snap.Labels {
@@ -150,9 +150,9 @@ func Set(b Interface, author identity.Interface, unixTime int64, status Status) 
 		return nil, fmt.Errorf("Ticket has no associated workflow")
 	}
 
-	selectedWf, err := FindWorkflow(selectedWfLabel)
-	if err != nil {
-		return nil, err
+	selectedWf := FindWorkflow(selectedWfLabel)
+	if selectedWf == nil {
+		return nil, fmt.Errorf("Invalid %s", selectedWfLabel)
 	}
 
 	if err := selectedWf.ValidateTransition(snap.Status, status); err != nil {

@@ -2,52 +2,57 @@ package bug
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestNextStates(t *testing.T) {
+// Test the default state transitions
+var nextStates [NumStatuses + 1][]Status = [...][]Status{
+	nil, // first status is 1
+	{VettedStatus},
+	{ProposedStatus, InProgressStatus},
+	{InReviewStatus},
+	{InProgressStatus, ReviewedStatus},
+	{AcceptedStatus},
+	{MergedStatus},
+	nil,
+}
 
-	// Test the default state transitions
-	currentState := [NumStatuses]Status{
-		ProposedStatus,
-		VettedStatus,
-		InProgressStatus,
-		InReviewStatus,
-		ReviewedStatus,
-		AcceptedStatus,
-		MergedStatus,
-	}
-	nextStates := [NumStatuses][]Status{
-		{VettedStatus},
-		{ProposedStatus, InProgressStatus},
-		{InReviewStatus},
-		{InProgressStatus, ReviewedStatus},
-		{AcceptedStatus},
-		{MergedStatus},
-		{},
-	}
+func TestWorkflow_NextStates(t *testing.T) {
 
-	defaultWf, err := FindWorkflow("workflow:default")
-	if err != nil {
+	defaultWf := FindWorkflow("workflow:default")
+	if defaultWf == nil {
 		t.Fatal("No default workflow defined")
 	}
 
-	for test := ProposedStatus; test < NumStatuses; test++ {
-		next, err := defaultWf.NextStates(currentState[test])
-		if err != nil || len(next) != len(nextStates[test]) {
-			t.Fatal("Invalid default state transition", currentState[test], ">", next, "(error", err, ")")
+	for currentState := FirstStatus; currentState <= LastStatus; currentState++ {
+		next, err := defaultWf.NextStates(currentState)
+		if err != nil || len(next) != len(nextStates[currentState]) {
+			t.Fatal("Invalid default state transition", currentState, ">", next, "(error", err, ")")
 		}
-		for tr, _ := range next {
-			if next[tr] != nextStates[test][tr] {
-				t.Fatal("Invalid default state transition", currentState[test], ">", next, "(error", err, ")")
+		assert.Equal(t, nextStates[currentState], next)
+	}
+
+}
+
+func TestWorkflow_ValidateTransition(t *testing.T) {
+
+	defaultWf := FindWorkflow("workflow:default")
+	if defaultWf == nil {
+		t.Fatal("No default workflow defined")
+	}
+
+	// Test validation of state transition
+	for from := FirstStatus; from <= LastStatus; from++ {
+		for _, to := range nextStates[from] {
+			if err := defaultWf.ValidateTransition(from, to); err != nil {
+				t.Fatal("Default state transition " + from.String() + " > " + to.String() + " flagged invalid when it isn't")
 			}
 		}
 	}
 
-	// Test validation of state transition
-	if err := defaultWf.ValidateTransition(ProposedStatus, VettedStatus); err != nil {
-		t.Fatal("Default state transition proposed > vetted flagged invalid when it isn't")
-	}
 	if err := defaultWf.ValidateTransition(ProposedStatus, MergedStatus); err == nil {
 		t.Fatal("Default state transition proposed > merged flagged valid when it isn't")
 	}
+
 }
