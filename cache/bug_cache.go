@@ -188,6 +188,28 @@ func (c *BugCache) CloseRaw(author *IdentityCache, unixTime int64, metadata map[
 	return op, c.notifyUpdated()
 }
 
+func (c *BugCache) SetStatus(status bug.Status) (*bug.SetStatusOperation, error) {
+	author, err := c.repoCache.GetUserIdentity()
+	if err != nil {
+		return nil, err
+	}
+
+	return c.SetStatusRaw(author, time.Now().Unix(), nil, status)
+}
+
+func (c *BugCache) SetStatusRaw(author *IdentityCache, unixTime int64, metadata map[string]string, status bug.Status) (*bug.SetStatusOperation, error) {
+	op, err := bug.SetStatus(c.bug, author.Identity, unixTime, status)
+	if err != nil {
+		return nil, err
+	}
+
+	for key, value := range metadata {
+		op.SetMetadata(key, value)
+	}
+
+	return op, c.notifyUpdated()
+}
+
 func (c *BugCache) SetTitle(title string) (*bug.SetTitleOperation, error) {
 	author, err := c.repoCache.GetUserIdentity()
 	if err != nil {

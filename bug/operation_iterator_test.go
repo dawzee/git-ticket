@@ -32,7 +32,7 @@ func TestOpIterator(t *testing.T) {
 
 	createOp := NewCreateOp(rene, unix, "title", "message", nil)
 	addCommentOp := NewAddCommentOp(rene, unix, "message2", nil)
-	setStatusOp := NewSetStatusOp(rene, unix, ClosedStatus)
+	setStatusOp := NewSetStatusOp(rene, unix, MergedStatus)
 	labelChangeOp := NewLabelChangeOperation(rene, unix, []Label{"added"}, []Label{"removed"})
 
 	var i int

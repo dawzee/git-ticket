@@ -2,6 +2,7 @@ package bug
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/MichaelMure/git-bug/entity"
@@ -140,3 +141,18 @@ func (snap *Snapshot) HasAnyActor(ids ...entity.Id) bool {
 
 // Sign post method for gqlgen
 func (snap *Snapshot) IsAuthored() {}
+
+// ValidateTransition returns an error if the supplied state is an invalid
+// destination from the current state for the assigned workflow
+func (snap *Snapshot) ValidateTransition(newStatus Status) error {
+	for _, l := range snap.Labels {
+		if strings.HasPrefix(string(l), "workflow:") {
+			w := FindWorkflow(string(l))
+			if w == nil {
+				return fmt.Errorf("invalid workflow %s", l)
+			}
+			return w.ValidateTransition(snap.Status, newStatus)
+		}
+	}
+	return fmt.Errorf("ticket has no associated workflow")
+}

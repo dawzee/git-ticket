@@ -705,9 +705,9 @@ func updateGithubIssueStatus(ctx context.Context, gc *githubv4.Client, id string
 	var state githubv4.IssueState
 
 	switch status {
-	case bug.OpenStatus:
+	case bug.ProposedStatus:
 		state = githubv4.IssueStateOpen
-	case bug.ClosedStatus:
+	case bug.MergedStatus:
 		state = githubv4.IssueStateClosed
 	default:
 		panic("unknown bug state")

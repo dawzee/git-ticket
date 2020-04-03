@@ -21,7 +21,7 @@ const bugTableFooterView = "bugTableFooterView"
 const bugTableInstructionView = "bugTableInstructionView"
 
 const defaultRemote = "origin"
-const defaultQuery = "status:open"
+const defaultQuery = ""
 
 type bugTable struct {
 	repo         *cache.RepoCache

@@ -19,7 +19,7 @@ func TestValidate(t *testing.T) {
 		NewCreateOp(rene, unix, "title", "message", nil),
 		NewSetTitleOp(rene, unix, "title2", "title1"),
 		NewAddCommentOp(rene, unix, "message2", nil),
-		NewSetStatusOp(rene, unix, ClosedStatus),
+		NewSetStatusOp(rene, unix, MergedStatus),
 		NewLabelChangeOperation(rene, unix, []Label{"added"}, []Label{"removed"}),
 	}
 
@@ -31,11 +31,11 @@ func TestValidate(t *testing.T) {
 
 	bad := []Operation{
 		// opbase
-		NewSetStatusOp(identity.NewIdentity("", "rene@descartes.fr"), unix, ClosedStatus),
-		NewSetStatusOp(identity.NewIdentity("René Descartes\u001b", "rene@descartes.fr"), unix, ClosedStatus),
-		NewSetStatusOp(identity.NewIdentity("René Descartes", "rene@descartes.fr\u001b"), unix, ClosedStatus),
-		NewSetStatusOp(identity.NewIdentity("René \nDescartes", "rene@descartes.fr"), unix, ClosedStatus),
-		NewSetStatusOp(identity.NewIdentity("René Descartes", "rene@\ndescartes.fr"), unix, ClosedStatus),
+		NewSetStatusOp(identity.NewIdentity("", "rene@descartes.fr"), unix, MergedStatus),
+		NewSetStatusOp(identity.NewIdentity("René Descartes\u001b", "rene@descartes.fr"), unix, MergedStatus),
+		NewSetStatusOp(identity.NewIdentity("René Descartes", "rene@descartes.fr\u001b"), unix, MergedStatus),
+		NewSetStatusOp(identity.NewIdentity("René \nDescartes", "rene@descartes.fr"), unix, MergedStatus),
+		NewSetStatusOp(identity.NewIdentity("René Descartes", "rene@\ndescartes.fr"), unix, MergedStatus),
 		&CreateOperation{OpBase: OpBase{
 			Author:        rene,
 			UnixTime:      0,

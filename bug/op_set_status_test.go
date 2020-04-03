@@ -12,7 +12,7 @@ import (
 func TestSetStatusSerialize(t *testing.T) {
 	var rene = identity.NewBare("René Descartes", "rene@descartes.fr")
 	unix := time.Now().Unix()
-	before := NewSetStatusOp(rene, unix, ClosedStatus)
+	before := NewSetStatusOp(rene, unix, MergedStatus)
 
 	data, err := json.Marshal(before)
 	assert.NoError(t, err)

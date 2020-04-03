@@ -68,7 +68,7 @@ func TestCache(t *testing.T) {
 	require.NoError(t, err)
 
 	// Querying
-	query, err := ParseQuery("status:open author:descartes sort:edit-asc")
+	query, err := ParseQuery("status:proposed author:descartes sort:edit-asc")
 	require.NoError(t, err)
 	require.Len(t, cache.QueryBugs(query), 2)
 

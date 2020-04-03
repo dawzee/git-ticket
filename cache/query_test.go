@@ -12,8 +12,8 @@ func TestQueryParse(t *testing.T) {
 
 		{"status:", false},
 
-		{"status:open", true},
-		{"status:closed", true},
+		{"status:proposed", true},
+		{"status:merged", true},
 		{"status:unknown", false},
 
 		{"author:rene", true},
