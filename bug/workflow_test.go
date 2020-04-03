@@ -7,7 +7,7 @@ import (
 )
 
 // Test the default state transitions
-var nextStates [][]Status = [][]Status{
+var nextStates = [][]Status{
 	nil, // first status is 1
 	{VettedStatus},
 	{ProposedStatus, InProgressStatus},
