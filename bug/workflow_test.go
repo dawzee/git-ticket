@@ -7,7 +7,7 @@ import (
 )
 
 // Test the default state transitions
-var nextStates [NumStatuses + 1][]Status = [...][]Status{
+var nextStates [][]Status = [][]Status{
 	nil, // first status is 1
 	{VettedStatus},
 	{ProposedStatus, InProgressStatus},
@@ -27,7 +27,7 @@ func TestWorkflow_NextStates(t *testing.T) {
 
 	for currentState := FirstStatus; currentState <= LastStatus; currentState++ {
 		next, err := defaultWf.NextStates(currentState)
-		if err != nil || len(next) != len(nextStates[currentState]) {
+		if err != nil {
 			t.Fatal("Invalid default state transition", currentState, ">", next, "(error", err, ")")
 		}
 		assert.Equal(t, nextStates[currentState], next)

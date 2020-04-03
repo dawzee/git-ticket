@@ -2,8 +2,6 @@ package bug
 
 import (
 	"encoding/json"
-	"fmt"
-	"strings"
 
 	"github.com/pkg/errors"
 
@@ -138,24 +136,7 @@ func SetStatus(b Interface, author identity.Interface, unixTime int64, status St
 	}
 
 	snap := b.Compile()
-	// find what workflow label this bug has
-	var selectedWfLabel string
-	for _, l := range snap.Labels {
-		if strings.Contains(string(l), "workflow:") {
-			selectedWfLabel = string(l)
-			break
-		}
-	}
-	if selectedWfLabel == "" {
-		return nil, fmt.Errorf("Ticket has no associated workflow")
-	}
-
-	selectedWf := FindWorkflow(selectedWfLabel)
-	if selectedWf == nil {
-		return nil, fmt.Errorf("Invalid %s", selectedWfLabel)
-	}
-
-	if err := selectedWf.ValidateTransition(snap.Status, status); err != nil {
+	if err := snap.ValidateTransition(status); err != nil {
 		return nil, err
 	}
 	b.Append(op)

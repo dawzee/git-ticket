@@ -32,7 +32,7 @@ func runStatusSet(cmd *cobra.Command, args []string) error {
 	return b.Commit()
 }
 
-var setCmds [bug.NumStatuses]*cobra.Command
+var setStatusCmds [bug.NumStatuses]*cobra.Command
 
 func init() {
 
@@ -40,7 +40,7 @@ func init() {
 
 	for c := 0; c < bug.NumStatuses; c++ {
 
-		setCmds[c] = &cobra.Command{
+		setStatusCmds[c] = &cobra.Command{
 			Use:     s.String() + " [<id>]",
 			Short:   "Mark a ticket as " + s.String() + ".",
 			PreRunE: loadRepoEnsureUser,
@@ -48,10 +48,10 @@ func init() {
 		}
 
 		// Use the Annotations map to store new status
-		setCmds[c].Annotations = make(map[string]string)
-		setCmds[c].Annotations["status"] = s.String()
+		setStatusCmds[c].Annotations = make(map[string]string)
+		setStatusCmds[c].Annotations["status"] = s.String()
 
-		statusCmd.AddCommand(setCmds[c])
+		statusCmd.AddCommand(setStatusCmds[c])
 
 		s++
 	}

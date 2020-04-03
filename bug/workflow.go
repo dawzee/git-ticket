@@ -17,7 +17,6 @@ var workflowStore []Workflow
 
 // FindWorkflow searches the workflow store by name and returns a pointer to it
 func FindWorkflow(name string) *Workflow {
-
 	for wf := range workflowStore {
 		if workflowStore[wf].label == name {
 			return &workflowStore[wf]
@@ -49,7 +48,6 @@ func (w *Workflow) ValidateTransition(from, to Status) error {
 }
 
 func init() {
-
 	// Initialise list of worflows with the default one
 	workflowStore = []Workflow{
 		Workflow{label: "workflow:default",
