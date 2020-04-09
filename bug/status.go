@@ -16,11 +16,12 @@ const (
 	ReviewedStatus
 	AcceptedStatus
 	MergedStatus
+	DoneStatus
 )
 
 const FirstStatus = ProposedStatus
-const LastStatus = MergedStatus
-const NumStatuses = 7
+const LastStatus = DoneStatus
+const NumStatuses = 8
 
 func (s Status) String() string {
 	switch s {
@@ -38,6 +39,8 @@ func (s Status) String() string {
 		return "accepted"
 	case MergedStatus:
 		return "merged"
+	case DoneStatus:
+		return "done"
 	default:
 		return "unknown status"
 	}
@@ -46,19 +49,21 @@ func (s Status) String() string {
 func (s Status) Action() string {
 	switch s {
 	case ProposedStatus:
-		return "proposed"
+		return "set PROPOSED"
 	case VettedStatus:
-		return "vetted"
+		return "set VETTED"
 	case InProgressStatus:
-		return "set to in progress"
+		return "set IN PROGRESS"
 	case InReviewStatus:
-		return "set to in review"
+		return "set IN REVIEW"
 	case ReviewedStatus:
-		return "reviewed"
+		return "set REVIEWED"
 	case AcceptedStatus:
-		return "accepted"
+		return "set ACCEPTED"
 	case MergedStatus:
-		return "merged"
+		return "set MERGED"
+	case DoneStatus:
+		return "set DONE"
 	default:
 		return "unknown status"
 	}
@@ -82,13 +87,15 @@ func StatusFromString(str string) (Status, error) {
 		return AcceptedStatus, nil
 	case "merged":
 		return MergedStatus, nil
+	case "done":
+		return DoneStatus, nil
 	default:
 		return 0, fmt.Errorf("unknown status")
 	}
 }
 
 func (s Status) Validate() error {
-	if s < ProposedStatus || s > MergedStatus {
+	if s < FirstStatus || s > LastStatus {
 		return fmt.Errorf("invalid")
 	}
 

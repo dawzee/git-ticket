@@ -42,7 +42,7 @@ func init() {
 
 		setStatusCmds[c] = &cobra.Command{
 			Use:     s.String() + " [<id>]",
-			Short:   "Mark a ticket as " + s.String() + ".",
+			Short:   "Ticket is " + s.Action() + ".",
 			PreRunE: loadRepoEnsureUser,
 			RunE:    runStatusSet,
 		}

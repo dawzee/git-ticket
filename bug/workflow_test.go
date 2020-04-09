@@ -6,53 +6,83 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Test the default state transitions
-var nextStates = [][]Status{
-	nil, // first status is 1
-	{VettedStatus},
-	{ProposedStatus, InProgressStatus},
-	{InReviewStatus},
-	{InProgressStatus, ReviewedStatus},
-	{AcceptedStatus},
-	{MergedStatus},
-	nil,
+var testWorkflow = Workflow{label: "workflow:test",
+	initialState: ProposedStatus,
+	transitions: []Transition{
+		Transition{start: ProposedStatus, end: VettedStatus, hook: "echo TEST transitioning from proposed to vetted"},
+		Transition{start: VettedStatus, end: ProposedStatus},
+		Transition{start: VettedStatus, end: InProgressStatus},
+		Transition{start: InProgressStatus, end: InReviewStatus},
+		Transition{start: InReviewStatus, end: InProgressStatus, hook: "true"},
+		Transition{start: InReviewStatus, end: ReviewedStatus},
+		Transition{start: ReviewedStatus, end: AcceptedStatus},
+		Transition{start: AcceptedStatus, end: MergedStatus},
+		Transition{start: MergedStatus, end: AcceptedStatus, hook: "false"},
+		Transition{start: MergedStatus, end: DoneStatus},
+	},
+}
+
+func TestWorkflow_FindWorkflow(t *testing.T) {
+	if wf := FindWorkflow("workflow:eng"); wf == nil || wf.label != "workflow:eng" {
+		t.Fatal("Finding workflow:eng failed")
+	}
+
+	if wf := FindWorkflow("workflow:qa"); wf == nil || wf.label != "workflow:qa" {
+		t.Fatal("Finding workflow:qa failed")
+	}
+
+	if FindWorkflow("workflow:XYZGASH") != nil {
+		t.Fatal("FindWorkflow returned reference to non-existant workflow")
+	}
 }
 
 func TestWorkflow_NextStates(t *testing.T) {
-
-	defaultWf := FindWorkflow("workflow:default")
-	if defaultWf == nil {
-		t.Fatal("No default workflow defined")
+	// The valid next states for each status in the testWorkflow
+	var nextStates = [][]Status{
+		nil,                                // first status is 1
+		{VettedStatus},                     // from ProposedStatus
+		{ProposedStatus, InProgressStatus}, // from VettedStatus
+		{InReviewStatus},                   // from InProgressStatus
+		{InProgressStatus, ReviewedStatus}, // from InReviewStatus
+		{AcceptedStatus},                   // from ReviewedStatus
+		{MergedStatus},                     // from AcceptedStatus
+		{AcceptedStatus, DoneStatus},       // from MergedStatus
+		nil,                                // from DoneStatus
 	}
 
 	for currentState := FirstStatus; currentState <= LastStatus; currentState++ {
-		next, err := defaultWf.NextStates(currentState)
+		next, err := testWorkflow.NextStates(currentState)
 		if err != nil {
-			t.Fatal("Invalid default state transition", currentState, ">", next, "(error", err, ")")
+			t.Fatal("Invalid next states", currentState, ">", next, "(error", err, ")")
 		}
 		assert.Equal(t, nextStates[currentState], next)
 	}
-
 }
 
 func TestWorkflow_ValidateTransition(t *testing.T) {
-
-	defaultWf := FindWorkflow("workflow:default")
-	if defaultWf == nil {
-		t.Fatal("No default workflow defined")
+	// The valid transitions for each status in the testWorkflow
+	var validTransitions = [][]Status{
+		nil,                                // first status is 1
+		{VettedStatus},                     // from ProposedStatus
+		{ProposedStatus, InProgressStatus}, // from VettedStatus
+		{InReviewStatus},                   // from InProgressStatus
+		{InProgressStatus, ReviewedStatus}, // from InReviewStatus
+		{AcceptedStatus},                   // from ReviewedStatus
+		{MergedStatus},                     // from AcceptedStatus
+		{DoneStatus},                       // from MergedStatus
+		nil,                                // from DoneStatus
 	}
 
 	// Test validation of state transition
 	for from := FirstStatus; from <= LastStatus; from++ {
-		for _, to := range nextStates[from] {
-			if err := defaultWf.ValidateTransition(from, to); err != nil {
-				t.Fatal("Default state transition " + from.String() + " > " + to.String() + " flagged invalid when it isn't")
+		for _, to := range validTransitions[from] {
+			if err := testWorkflow.ValidateTransition(from, to); err != nil {
+				t.Fatal("State transition " + from.String() + " > " + to.String() + " flagged invalid when it isn't")
 			}
 		}
 	}
 
-	if err := defaultWf.ValidateTransition(ProposedStatus, MergedStatus); err == nil {
-		t.Fatal("Default state transition proposed > merged flagged valid when it isn't")
+	if err := testWorkflow.ValidateTransition(ProposedStatus, MergedStatus); err == nil {
+		t.Fatal("State transition proposed > merged flagged valid when it isn't")
 	}
-
 }

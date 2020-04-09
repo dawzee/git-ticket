@@ -96,7 +96,12 @@ func (sb *showBug) layout(g *gocui.Gui) error {
 	}
 
 	v.Clear()
-	_, _ = fmt.Fprintf(v, "[q] Save and return [←↓↑→,hjkl] Navigation [o] Toggle open/close [e] Edit [c] Comment [t] Change title")
+	_, _ = fmt.Fprintf(v, "[q] Save and return [←↓↑→,hjkl] Navigation [e] Edit [c] Comment [t] Change title")
+
+	validStates, err := sb.bug.Snapshot().NextStates()
+	for _, vs := range validStates {
+		_, _ = fmt.Fprintf(v, " [%d] "+vs.Action(), int(vs))
+	}
 
 	_, err = g.SetViewOnTop(showBugInstructionView)
 	if err != nil {
@@ -167,9 +172,38 @@ func (sb *showBug) keybindings(g *gocui.Gui) error {
 		return err
 	}
 
-	// Open/close
-	if err := g.SetKeybinding(showBugView, 'o', gocui.ModNone,
-		sb.toggleOpenClose); err != nil {
+	// Set Status
+	// TODO - there must be a better way of doing this....
+	if err := g.SetKeybinding(showBugView, '1', gocui.ModNone,
+		sb.setStatus1); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding(showBugView, '2', gocui.ModNone,
+		sb.setStatus2); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding(showBugView, '3', gocui.ModNone,
+		sb.setStatus3); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding(showBugView, '4', gocui.ModNone,
+		sb.setStatus4); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding(showBugView, '5', gocui.ModNone,
+		sb.setStatus5); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding(showBugView, '6', gocui.ModNone,
+		sb.setStatus6); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding(showBugView, '7', gocui.ModNone,
+		sb.setStatus7); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding(showBugView, '8', gocui.ModNone,
+		sb.setStatus8); err != nil {
 		return err
 	}
 
@@ -612,17 +646,45 @@ func (sb *showBug) setTitle(g *gocui.Gui, v *gocui.View) error {
 	return setTitleWithEditor(sb.bug)
 }
 
-func (sb *showBug) toggleOpenClose(g *gocui.Gui, v *gocui.View) error {
-	switch sb.bug.Snapshot().Status {
-	case bug.ProposedStatus:
-		_, err := sb.bug.Close()
-		return err
-	case bug.MergedStatus:
-		_, err := sb.bug.Open()
-		return err
-	default:
-		return nil
-	}
+// TODO - there must be a better way of doing this....
+func (sb *showBug) setStatus1(g *gocui.Gui, v *gocui.View) error {
+	_, err := sb.bug.SetStatus(bug.Status(1))
+	return err
+}
+
+func (sb *showBug) setStatus2(g *gocui.Gui, v *gocui.View) error {
+	_, err := sb.bug.SetStatus(bug.Status(2))
+	return err
+}
+
+func (sb *showBug) setStatus3(g *gocui.Gui, v *gocui.View) error {
+	_, err := sb.bug.SetStatus(bug.Status(3))
+	return err
+}
+
+func (sb *showBug) setStatus4(g *gocui.Gui, v *gocui.View) error {
+	_, err := sb.bug.SetStatus(bug.Status(4))
+	return err
+}
+
+func (sb *showBug) setStatus5(g *gocui.Gui, v *gocui.View) error {
+	_, err := sb.bug.SetStatus(bug.Status(5))
+	return err
+}
+
+func (sb *showBug) setStatus6(g *gocui.Gui, v *gocui.View) error {
+	_, err := sb.bug.SetStatus(bug.Status(6))
+	return err
+}
+
+func (sb *showBug) setStatus7(g *gocui.Gui, v *gocui.View) error {
+	_, err := sb.bug.SetStatus(bug.Status(7))
+	return err
+}
+
+func (sb *showBug) setStatus8(g *gocui.Gui, v *gocui.View) error {
+	_, err := sb.bug.SetStatus(bug.Status(8))
+	return err
 }
 
 func (sb *showBug) edit(g *gocui.Gui, v *gocui.View) error {

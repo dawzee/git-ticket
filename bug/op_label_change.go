@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -158,6 +159,7 @@ func (l *LabelChangeTimelineItem) IsAuthored() {}
 func ChangeLabels(b Interface, author identity.Interface, unixTime int64, add, remove []string) ([]LabelChangeResult, *LabelChangeOperation, error) {
 	var added, removed []Label
 	var results []LabelChangeResult
+	var newWorkflow *Workflow
 
 	snap := b.Compile()
 
@@ -174,6 +176,20 @@ func ChangeLabels(b Interface, author identity.Interface, unixTime int64, add, r
 		if labelExist(snap.Labels, label) {
 			results = append(results, LabelChangeResult{Label: label, Status: LabelChangeAlreadySet})
 			continue
+		}
+
+		// if it's a workflow, check it exists
+		if strings.HasPrefix(str, "workflow:") {
+			if newWorkflow = FindWorkflow(str); newWorkflow == nil {
+				results = append(results, LabelChangeResult{Label: label, Status: LabelChangeInvalidWorkflow})
+				continue
+			}
+			// if so, remove any existing workflows
+			for _, lbl := range snap.Labels {
+				if strings.HasPrefix(string(lbl), "workflow:") {
+					remove = append(remove, string(lbl))
+				}
+			}
 		}
 
 		added = append(added, label)
@@ -195,6 +211,12 @@ func ChangeLabels(b Interface, author identity.Interface, unixTime int64, add, r
 			continue
 		}
 
+		// unless this is a workflow change, don't allow workflow labels to be removed
+		if newWorkflow == nil && strings.HasPrefix(str, "workflow:") {
+			results = append(results, LabelChangeResult{Label: label, Status: LabelChangeInvalidWorkflow})
+			continue
+		}
+
 		removed = append(removed, label)
 		results = append(results, LabelChangeResult{Label: label, Status: LabelChangeRemoved})
 	}
@@ -210,6 +232,15 @@ func ChangeLabels(b Interface, author identity.Interface, unixTime int64, add, r
 	}
 
 	b.Append(labelOp)
+
+	// If we're changing workflows then force the status to the initial state
+	if newWorkflow != nil {
+		op := NewSetStatusOp(author, unixTime, newWorkflow.initialState)
+		if err := op.Validate(); err != nil {
+			return nil, nil, err
+		}
+		b.Append(op)
+	}
 
 	return results, labelOp, nil
 }
@@ -260,6 +291,7 @@ const (
 	LabelChangeDuplicateInOp
 	LabelChangeAlreadySet
 	LabelChangeDoesntExist
+	LabelChangeInvalidWorkflow
 )
 
 type LabelChangeResult struct {
@@ -279,6 +311,8 @@ func (l LabelChangeResult) String() string {
 		return fmt.Sprintf("label %s was already set", l.Label)
 	case LabelChangeDoesntExist:
 		return fmt.Sprintf("label %s doesn't exist on this bug", l.Label)
+	case LabelChangeInvalidWorkflow:
+		return fmt.Sprintf("invalid workflow operation %s", l.Label)
 	default:
 		panic(fmt.Sprintf("unknown label change status %v", l.Status))
 	}
