@@ -96,7 +96,12 @@ func (sb *showBug) layout(g *gocui.Gui) error {
 	}
 
 	v.Clear()
-	_, _ = fmt.Fprintf(v, "[q] Save and return [←↓↑→,hjkl] Navigation [o] Toggle open/close [e] Edit [c] Comment [t] Change title")
+	_, _ = fmt.Fprintf(v, "[q] Save and return [←↓↑→,hjkl] Navigation [e] Edit [c] Comment [t] Change title")
+
+	validStates, err := sb.bug.Snapshot().NextStates()
+	for _, vs := range validStates {
+		_, _ = fmt.Fprintf(v, " [%d] %s", vs, vs.Action())
+	}
 
 	_, err = g.SetViewOnTop(showBugInstructionView)
 	if err != nil {
@@ -167,10 +172,20 @@ func (sb *showBug) keybindings(g *gocui.Gui) error {
 		return err
 	}
 
-	// Open/close
-	if err := g.SetKeybinding(showBugView, 'o', gocui.ModNone,
-		sb.toggleOpenClose); err != nil {
-		return err
+	// Set Status
+	for s := bug.FirstStatus; s <= bug.LastStatus; s++ {
+		status := s
+		key := '0' + rune(status)
+
+		callback := func(g *gocui.Gui, v *gocui.View) error {
+			_, _ = sb.bug.SetStatus(status)
+			// don't report error because that will drop us out of the termui
+			return nil
+		}
+
+		if err := g.SetKeybinding(showBugView, key, gocui.ModNone, callback); err != nil {
+			return err
+		}
 	}
 
 	// Title
@@ -610,19 +625,6 @@ func (sb *showBug) comment(g *gocui.Gui, v *gocui.View) error {
 
 func (sb *showBug) setTitle(g *gocui.Gui, v *gocui.View) error {
 	return setTitleWithEditor(sb.bug)
-}
-
-func (sb *showBug) toggleOpenClose(g *gocui.Gui, v *gocui.View) error {
-	switch sb.bug.Snapshot().Status {
-	case bug.ProposedStatus:
-		_, err := sb.bug.Close()
-		return err
-	case bug.MergedStatus:
-		_, err := sb.bug.Open()
-		return err
-	default:
-		return nil
-	}
 }
 
 func (sb *showBug) edit(g *gocui.Gui, v *gocui.View) error {

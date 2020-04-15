@@ -1,10 +1,16 @@
 package bug
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
 
 type Transition struct {
 	start Status
 	end   Status
+	hook  string
 }
 
 type Workflow struct {
@@ -41,16 +47,23 @@ func (w *Workflow) NextStates(s Status) ([]Status, error) {
 func (w *Workflow) ValidateTransition(from, to Status) error {
 	for _, t := range w.transitions {
 		if t.start == from && t.end == to {
+			if t.hook != "" {
+				hookArgs := strings.Split(t.hook, " ")
+				cmd := exec.Command(hookArgs[0], hookArgs[1:]...)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				return cmd.Run()
+			}
 			return nil
 		}
 	}
-	return fmt.Errorf("Invalid transition %s -> %s", from, to)
+	return fmt.Errorf("invalid transition %s -> %s", from, to)
 }
 
 func init() {
-	// Initialise list of worflows with the default one
+	// Initialise list of workflows
 	workflowStore = []Workflow{
-		Workflow{label: "workflow:default",
+		Workflow{label: "workflow:eng",
 			initialState: ProposedStatus,
 			transitions: []Transition{
 				Transition{start: ProposedStatus, end: VettedStatus},
@@ -61,6 +74,13 @@ func init() {
 				Transition{start: InReviewStatus, end: ReviewedStatus},
 				Transition{start: ReviewedStatus, end: AcceptedStatus},
 				Transition{start: AcceptedStatus, end: MergedStatus},
+			},
+		},
+		Workflow{label: "workflow:qa",
+			initialState: ProposedStatus,
+			transitions: []Transition{
+				Transition{start: ProposedStatus, end: InProgressStatus},
+				Transition{start: InProgressStatus, end: DoneStatus},
 			},
 		},
 	}

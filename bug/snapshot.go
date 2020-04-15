@@ -142,6 +142,20 @@ func (snap *Snapshot) HasAnyActor(ids ...entity.Id) bool {
 // Sign post method for gqlgen
 func (snap *Snapshot) IsAuthored() {}
 
+// NextStates returns a slice of next possible states for the assigned workflow
+func (snap *Snapshot) NextStates() ([]Status, error) {
+	for _, l := range snap.Labels {
+		if strings.HasPrefix(string(l), "workflow:") {
+			w := FindWorkflow(string(l))
+			if w == nil {
+				return nil, fmt.Errorf("invalid workflow %s", l)
+			}
+			return w.NextStates(snap.Status)
+		}
+	}
+	return nil, fmt.Errorf("ticket has no associated workflow")
+}
+
 // ValidateTransition returns an error if the supplied state is an invalid
 // destination from the current state for the assigned workflow
 func (snap *Snapshot) ValidateTransition(newStatus Status) error {
