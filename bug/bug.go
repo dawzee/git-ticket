@@ -666,6 +666,7 @@ func (bug *Bug) Compile() Snapshot {
 		id:     bug.id,
 		Status: ProposedStatus,
 	}
+	snap.Checklists = make(map[string]Checklist)
 
 	it := NewOperationIterator(bug)
 

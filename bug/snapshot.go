@@ -17,6 +17,7 @@ type Snapshot struct {
 	Title        string
 	Comments     []Comment
 	Labels       []Label
+	Checklists   map[string]Checklist
 	Author       identity.Interface
 	Actors       []identity.Interface
 	Participants []identity.Interface
@@ -141,6 +142,29 @@ func (snap *Snapshot) HasAnyActor(ids ...entity.Id) bool {
 
 // Sign post method for gqlgen
 func (snap *Snapshot) IsAuthored() {}
+
+// GetChecklists returns a map of checklists associated with this snapshot
+func (snap *Snapshot) GetChecklists() (map[string]Checklist, error) {
+	checklists := make(map[string]Checklist)
+
+	// Only checklists named in the labels list are currently valid
+	for _, l := range snap.Labels {
+		if strings.HasPrefix(string(l), "checklist:") {
+
+			var present bool
+			checklists[string(l)], present = snap.Checklists[string(l)]
+
+			if !present {
+				cl := FindChecklist(string(l))
+				if cl == nil {
+					return nil, fmt.Errorf("invalid checklist %s", l)
+				}
+				checklists[string(l)] = *cl
+			}
+		}
+	}
+	return checklists, nil
+}
 
 // NextStates returns a slice of next possible states for the assigned workflow
 func (snap *Snapshot) NextStates() ([]Status, error) {
