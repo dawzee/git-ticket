@@ -10,8 +10,6 @@ import (
 	"github.com/MichaelMure/git-bug/util/timestamp"
 )
 
-var _ Operation = &SetStatusOperation{}
-
 // SetStatusOperation will change the status of a bug
 type SetStatusOperation struct {
 	OpBase

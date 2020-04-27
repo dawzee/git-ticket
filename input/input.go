@@ -28,9 +28,6 @@ var ErrEmptyMessage = errors.New("empty message")
 // ErrEmptyMessage is returned when the required title has not been entered
 var ErrEmptyTitle = errors.New("empty title")
 
-// ErrChecklistFormat is returned when the checklist format is wrong
-var ErrChecklistFormat = errors.New("checklist parse error")
-
 const bugTitleCommentTemplate = `%s%s
 
 # Please enter the title and comment message. The first non-empty line will be
@@ -224,14 +221,14 @@ func ChecklistEditorInput(repo repository.RepoCommon, checklist bug.Checklist) (
 	questionSearch, _ := regexp.Compile(`^# (\d+) : (\w+)`)
 	stateSearch, _ := regexp.Compile(`^\[(PENDING|PASSED|FAILED|NOT APPLICABLE)\]`)
 
-	for _, line := range lines {
+	for l, line := range lines {
 		if !inComment {
 			if questionSearch.MatchString(line) {
 				// check question number and reset comment
 				thisQ, err := strconv.Atoi(questionSearch.FindStringSubmatch(line)[1])
 				if err != nil || thisQ != nextQ {
-					// something is wrong with the format, just drop out
-					break
+					// something is wrong with the format
+					return checklistChanged, fmt.Errorf("checklist parse error, line %d", l)
 				}
 				inComment = true
 				commentText = ""
@@ -241,8 +238,8 @@ func ChecklistEditorInput(repo repository.RepoCommon, checklist bug.Checklist) (
 			if stateSearch.MatchString(line) {
 				newState, err := bug.StateFromString(stateSearch.FindStringSubmatch(line)[1])
 				if err != nil {
-					// something is wrong with the format, just drop out
-					break
+					// something is wrong with the format
+					return checklistChanged, fmt.Errorf("checklist parse error, line %d", l)
 				}
 				// check and save comment
 				if checklist.Questions[nextQ-1].Comment != strings.TrimSuffix(commentText, "\n") {
@@ -262,8 +259,8 @@ func ChecklistEditorInput(repo repository.RepoCommon, checklist bug.Checklist) (
 		}
 	}
 
-	if nextQ != (len(checklist.Questions) + 1) {
-		return false, ErrChecklistFormat
+	if nextQ != len(checklist.Questions)+1 {
+		return checklistChanged, fmt.Errorf("checklist parse error, question count")
 	}
 
 	return checklistChanged, nil
@@ -291,7 +288,7 @@ const queryTemplate = `%s
 # - sort:edit, sort:edit-desc, sort:edit-asc
 #
 # Notes
-# 
+#
 # - queries are case insensitive.
 # - you can combine as many qualifiers as you want.
 # - you can use double quotes for multi-word search terms (ex: author:"René Descartes")

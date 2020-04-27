@@ -26,7 +26,7 @@ type Checklist struct {
 	Questions []ChecklistQuestion
 }
 
-var checklistStore []Checklist
+var ChecklistStore map[string]Checklist
 
 func (s ChecklistQuestionState) String() string {
 	switch s {
@@ -60,36 +60,27 @@ func StateFromString(str string) (ChecklistQuestionState, error) {
 	}
 }
 
-// FindChecklist searches the checklist store by label and returns a pointer to it
-func FindChecklist(label string) *Checklist {
-	for cl := range checklistStore {
-		if checklistStore[cl].Label == label {
-			return &checklistStore[cl]
-		}
-	}
-	return nil
-}
-
 func init() {
 	// TODO put proper checklists here
 
-	// Initialise list of checklists
-	checklistStore = []Checklist{
-		Checklist{Label: "checklist:code",
-			Title: "Code Review Checklist",
-			Questions: []ChecklistQuestion{
-				ChecklistQuestion{Question: "Is it nice code?"},
-				ChecklistQuestion{Question: "Does it compile?"},
-				ChecklistQuestion{Question: "Are you sure?"},
-			},
+	// Initialise map of checklists
+	ChecklistStore = make(map[string]Checklist)
+
+	ChecklistStore["checklist:code"] = Checklist{Label: "checklist:code",
+		Title: "Code Review Checklist",
+		Questions: []ChecklistQuestion{
+			ChecklistQuestion{Question: "Is it nice code?"},
+			ChecklistQuestion{Question: "Does it compile?"},
+			ChecklistQuestion{Question: "Are you sure?"},
 		},
-		Checklist{Label: "checklist:test",
-			Title: "Test Review Checklist",
-			Questions: []ChecklistQuestion{
-				ChecklistQuestion{Question: "Is it a nice test?"},
-				ChecklistQuestion{Question: "Does it pass?"},
-				ChecklistQuestion{Question: "Are you sure?"},
-			},
+	}
+
+	ChecklistStore["checklist:test"] = Checklist{Label: "checklist:test",
+		Title: "Test Review Checklist",
+		Questions: []ChecklistQuestion{
+			ChecklistQuestion{Question: "Is it a nice test?"},
+			ChecklistQuestion{Question: "Does it pass?"},
+			ChecklistQuestion{Question: "Are you sure?"},
 		},
 	}
 }

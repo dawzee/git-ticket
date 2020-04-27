@@ -149,17 +149,15 @@ func (snap *Snapshot) GetChecklists() (map[string]Checklist, error) {
 
 	// Only checklists named in the labels list are currently valid
 	for _, l := range snap.Labels {
-		if strings.HasPrefix(string(l), "checklist:") {
-
+		lblStr := string(l)
+		if strings.HasPrefix(lblStr, "checklist:") {
 			var present bool
-			checklists[string(l)], present = snap.Checklists[string(l)]
-
+			checklists[lblStr], present = snap.Checklists[lblStr]
 			if !present {
-				cl := FindChecklist(string(l))
-				if cl == nil {
+				checklists[lblStr], present = ChecklistStore[lblStr]
+				if !present {
 					return nil, fmt.Errorf("invalid checklist %s", l)
 				}
-				checklists[string(l)] = *cl
 			}
 		}
 	}
