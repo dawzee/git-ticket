@@ -9,6 +9,7 @@ import (
 
 	errors2 "github.com/go-errors/errors"
 
+	"github.com/MichaelMure/git-bug/bug"
 	"github.com/MichaelMure/git-bug/cache"
 	"github.com/MichaelMure/git-bug/entity"
 	"github.com/MichaelMure/git-bug/input"
@@ -271,6 +272,39 @@ func editCommentWithEditor(bug *cache.BugCache, target entity.Id, preMessage str
 		if err != nil {
 			return err
 		}
+	}
+
+	initGui(nil)
+
+	return errTerminateMainloop
+}
+
+func reviewWithEditor(bug *cache.BugCache, checklist bug.Checklist) error {
+	// This is somewhat hacky.
+	// As there is no way to pause gocui, run the editor and restart gocui,
+	// we have to stop it entirely and start a new one later.
+	//
+	// - an error channel is used to route the returned error of this new
+	// 		instance into the original launch function
+	// - a custom error (errTerminateMainloop) is used to terminate the original
+	//		instance's mainLoop. This error is then filtered.
+
+	ui.g.Close()
+	ui.g = nil
+
+	clChange, err := input.ChecklistEditorInput(ui.cache, checklist)
+	if err != nil {
+		return err
+	}
+
+	if !clChange {
+		ui.msgPopup.Activate("", "Checklists unchanged")
+	} else {
+		_, err := bug.SetChecklist(checklist)
+		if err != nil {
+			return err
+		}
+		ui.msgPopup.Activate("", checklist.Title+" updated")
 	}
 
 	initGui(nil)

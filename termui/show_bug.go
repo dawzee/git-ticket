@@ -96,7 +96,7 @@ func (sb *showBug) layout(g *gocui.Gui) error {
 	}
 
 	v.Clear()
-	_, _ = fmt.Fprintf(v, "[q] Save and return [←↓↑→,hjkl] Navigation [e] Edit [c] Comment [t] Change title")
+	_, _ = fmt.Fprintf(v, "[q] Save and return [←↓↑→,hjkl] Navigation [e] Edit [c] Comment [t] Change title [r] Review")
 
 	validStates, err := sb.bug.Snapshot().NextStates()
 	for _, vs := range validStates {
@@ -186,6 +186,12 @@ func (sb *showBug) keybindings(g *gocui.Gui) error {
 		if err := g.SetKeybinding(showBugView, key, gocui.ModNone, callback); err != nil {
 			return err
 		}
+	}
+
+	// Review
+	if err := g.SetKeybinding(showBugView, 'r', gocui.ModNone,
+		sb.review); err != nil {
+		return err
 	}
 
 	// Title
@@ -366,6 +372,21 @@ func (sb *showBug) renderMain(g *gocui.Gui, mainView *gocui.View) error {
 			content := fmt.Sprintf("%s %s on %s",
 				colors.Magenta(op.Author.DisplayName()),
 				action.String(),
+				op.UnixTime.Time().Format(timeLayout),
+			)
+			content, lines := text.Wrap(content, maxX)
+
+			v, err := sb.createOpView(g, viewName, x0, y0, maxX+1, lines, true)
+			if err != nil {
+				return err
+			}
+			_, _ = fmt.Fprint(v, content)
+			y0 += lines + 2
+
+		case *bug.SetChecklistTimelineItem:
+			content := fmt.Sprintf("%s edited the %s on %s",
+				colors.Magenta(op.Author.DisplayName()),
+				colors.Bold(op.Checklist.Title),
 				op.UnixTime.Time().Format(timeLayout),
 			)
 			content, lines := text.Wrap(content, maxX)
@@ -621,6 +642,56 @@ func (sb *showBug) focusView(g *gocui.Gui) error {
 
 func (sb *showBug) comment(g *gocui.Gui, v *gocui.View) error {
 	return addCommentWithEditor(sb.bug)
+}
+
+func (sb *showBug) review(g *gocui.Gui, v *gocui.View) error {
+
+	ticketChecklists, err := sb.bug.Snapshot().GetChecklists()
+	if err != nil {
+		return err
+	}
+
+	if len(ticketChecklists) == 0 {
+		ui.msgPopup.Activate("", "No checklists associated with ticket")
+		return nil
+	}
+
+	// Collect checklist labels
+	ticketChecklistLabels := make([]string, 0, len(ticketChecklists))
+
+	for k := range ticketChecklists {
+		ticketChecklistLabels = append(ticketChecklistLabels, k)
+	}
+
+	// If there are multiple checklists associated with the ticket then give the
+	// user the option to choose which to edit rather than editing every one
+
+	if len(ticketChecklistLabels) > 1 {
+
+		c := ui.inputPopup.ActivateWithContent("[↓↑] Select Checklist", ticketChecklistLabels)
+
+		go func() {
+			selectedChecklistLabel := <-c
+
+			checklist, ok := ticketChecklists[selectedChecklistLabel]
+
+			if !ok {
+				ui.msgPopup.Activate(msgPopupErrorTitle, "Invalid checklist "+selectedChecklistLabel)
+				return
+			}
+
+			g.Update(func(g *gocui.Gui) error {
+				return reviewWithEditor(sb.bug, checklist)
+			})
+
+		}()
+
+		return nil
+
+	}
+
+	// Just the one checklist, so edit that
+	return reviewWithEditor(sb.bug, ticketChecklists[ticketChecklistLabels[0]])
 }
 
 func (sb *showBug) setTitle(g *gocui.Gui, v *gocui.View) error {
