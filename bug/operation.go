@@ -27,6 +27,7 @@ const (
 	NoOpOp
 	SetMetadataOp
 	SetChecklistOp
+	SetAssigneeOp
 )
 
 // Operation define the interface to fulfill for an edit operation of a Bug

@@ -188,13 +188,26 @@ func (c *BugCache) CloseRaw(author *IdentityCache, unixTime int64, metadata map[
 	return op, c.notifyUpdated()
 }
 
-func (c *BugCache) SetStatus(status bug.Status) (*bug.SetStatusOperation, error) {
+func (c *BugCache) SetAssignee(assignee *IdentityCache) (*bug.SetAssigneeOperation, error) {
 	author, err := c.repoCache.GetUserIdentity()
 	if err != nil {
 		return nil, err
 	}
 
-	return c.SetStatusRaw(author, time.Now().Unix(), nil, status)
+	return c.SetAssigneeRaw(author, time.Now().Unix(), nil, assignee)
+}
+
+func (c *BugCache) SetAssigneeRaw(author *IdentityCache, unixTime int64, metadata map[string]string, assignee *IdentityCache) (*bug.SetAssigneeOperation, error) {
+	op, err := bug.SetAssignee(c.bug, author.Identity, unixTime, assignee.Identity)
+	if err != nil {
+		return nil, err
+	}
+
+	for key, value := range metadata {
+		op.SetMetadata(key, value)
+	}
+
+	return op, c.notifyUpdated()
 }
 
 func (c *BugCache) SetChecklist(cl bug.Checklist) (*bug.SetChecklistOperation, error) {
@@ -217,6 +230,15 @@ func (c *BugCache) SetChecklistRaw(author *IdentityCache, unixTime int64, cl bug
 	}
 
 	return op, c.notifyUpdated()
+}
+
+func (c *BugCache) SetStatus(status bug.Status) (*bug.SetStatusOperation, error) {
+	author, err := c.repoCache.GetUserIdentity()
+	if err != nil {
+		return nil, err
+	}
+
+	return c.SetStatusRaw(author, time.Now().Unix(), nil, status)
 }
 
 func (c *BugCache) SetStatusRaw(author *IdentityCache, unixTime int64, metadata map[string]string, status bug.Status) (*bug.SetStatusOperation, error) {
