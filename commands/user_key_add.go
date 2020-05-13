@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	keyAddArmoredFile    string
-	keyAddArmored        string
+	keyAddArmoredFile string
+	keyAddArmored     string
 )
 
 func runKeyAdd(cmd *cobra.Command, args []string) error {
@@ -40,7 +40,7 @@ func runKeyAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	if keyAddArmoredFile == "" && keyAddArmored == "" {
-		keyAddArmored, err = input.IdentityVersionKeyEditorInput(backend, "")
+		keyAddArmored, err = input.IdentityVersionKeyEditorInput(backend)
 		if err == input.ErrEmptyMessage {
 			fmt.Println("Empty PGP key, aborting.")
 			return nil

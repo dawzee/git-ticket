@@ -11,7 +11,6 @@ import (
 )
 
 type Key struct {
-	// PubKey is the armored PGP public key.
 	ArmoredPublicKey string `json:"pub_key"`
 
 	publicKey *packet.PublicKey `json:"-"`
