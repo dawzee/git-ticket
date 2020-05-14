@@ -60,27 +60,35 @@ func StateFromString(str string) (ChecklistQuestionState, error) {
 	}
 }
 
+func (s ChecklistQuestionState) Validate() error {
+	if s < Pending || s > NotApplicable {
+		return fmt.Errorf("invalid")
+	}
+
+	return nil
+}
+
 func init() {
 	// TODO put proper checklists here
 
 	// Initialise map of checklists
 	ChecklistStore = make(map[string]Checklist)
 
-	ChecklistStore["checklist:code"] = Checklist{Label: "checklist:code",
-		Title: "Code Review Checklist",
+	ChecklistStore["checklist:dummy-code"] = Checklist{Label: "checklist:dummy-code",
+		Title: "Dummy Code Review Checklist",
 		Questions: []ChecklistQuestion{
-			ChecklistQuestion{Question: "Is it nice code?"},
-			ChecklistQuestion{Question: "Does it compile?"},
-			ChecklistQuestion{Question: "Are you sure?"},
+			ChecklistQuestion{Question: "Code review question 1?"},
+			ChecklistQuestion{Question: "Code review question 2?"},
+			ChecklistQuestion{Question: "Code review question 3?"},
 		},
 	}
 
-	ChecklistStore["checklist:test"] = Checklist{Label: "checklist:test",
-		Title: "Test Review Checklist",
+	ChecklistStore["checklist:dummy-test"] = Checklist{Label: "checklist:dummy-test",
+		Title: "Dummy Test Review Checklist",
 		Questions: []ChecklistQuestion{
-			ChecklistQuestion{Question: "Is it a nice test?"},
-			ChecklistQuestion{Question: "Does it pass?"},
-			ChecklistQuestion{Question: "Are you sure?"},
+			ChecklistQuestion{Question: "Test review question 1?"},
+			ChecklistQuestion{Question: "Test review question 2?"},
+			ChecklistQuestion{Question: "Test review question 3?"},
 		},
 	}
 }

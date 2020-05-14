@@ -6,6 +6,7 @@ import (
 	"github.com/MichaelMure/git-bug/entity"
 	"github.com/MichaelMure/git-bug/identity"
 	"github.com/MichaelMure/git-bug/util/timestamp"
+	"github.com/pkg/errors"
 )
 
 var _ Operation = &SetChecklistOperation{}
@@ -46,7 +47,11 @@ func (op *SetChecklistOperation) Validate() error {
 		return err
 	}
 
-	// TODO Validate the actual checklist
+	for _, q := range op.Checklist.Questions {
+		if err := q.State.Validate(); err != nil {
+			return errors.Wrap(err, "state")
+		}
+	}
 
 	return nil
 }

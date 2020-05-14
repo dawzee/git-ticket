@@ -7,6 +7,7 @@ import (
 	"github.com/MichaelMure/git-bug/commands/select"
 	"github.com/MichaelMure/git-bug/input"
 	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 )
 
@@ -23,38 +24,60 @@ func runReview(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	snap := b.Snapshot()
-
-	currentChecklists, err := snap.GetChecklists()
+	ticketChecklists, err := b.Snapshot().GetChecklists()
 	if err != nil {
 		return err
 	}
 
-	// TODO if there are multiple checklists associated with the ticket then give the
-	// user the option to choose which to edit rather than forcing them to edit every one
+	if len(ticketChecklists) == 0 {
+		fmt.Println("No checklists associated with ticket")
+		return nil
+	}
 
-	update := false
+	// Collect checklist labels
+	ticketChecklistLabels := make([]string, 0, len(ticketChecklists))
 
-	for _, cl := range currentChecklists {
-		clChange, err := input.ChecklistEditorInput(repo, cl)
+	for k := range ticketChecklists {
+		ticketChecklistLabels = append(ticketChecklistLabels, k)
+	}
+
+	// If there are multiple checklists associated with the ticket then give the
+	// user the option to choose which to edit rather than editing every one
+
+	var selectedChecklistLabel string
+
+	if len(ticketChecklistLabels) > 1 {
+		prompt := promptui.Select{
+			Label: "Select Checklist",
+			Items: ticketChecklistLabels,
+		}
+
+		_, selectedChecklistLabel, err = prompt.Run()
+
+		if err != nil {
+			return err
+		}
+	} else {
+		selectedChecklistLabel = ticketChecklistLabels[0]
+	}
+
+	// Use the editor to edit the checklist, if it changed then create an update
+	// operation and commit
+	clChange, err := input.ChecklistEditorInput(repo, ticketChecklists[selectedChecklistLabel])
+	if err != nil {
+		return err
+	}
+
+	if clChange {
+		_, err = b.SetChecklist(ticketChecklists[selectedChecklistLabel])
 		if err != nil {
 			return err
 		}
 
-		if clChange {
-			update = true
-			fmt.Println(cl.Title, "updated")
-			_, err = b.SetChecklist(cl)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	if update {
 		return b.Commit()
 	}
-	fmt.Println("checklist unchanged")
+
+	fmt.Println("Checklists unchanged")
 	return nil
 }
 

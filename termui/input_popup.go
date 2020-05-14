@@ -12,7 +12,8 @@ const inputPopupView = "inputPopupView"
 type inputPopup struct {
 	active  bool
 	title   string
-	preload string
+	preload []string
+	sel     int
 	c       chan string
 }
 
@@ -28,6 +29,16 @@ func (ip *inputPopup) keybindings(g *gocui.Gui) error {
 
 	// Validate
 	if err := g.SetKeybinding(inputPopupView, gocui.KeyEnter, gocui.ModNone, ip.validate); err != nil {
+		return err
+	}
+
+	// Down
+	if err := g.SetKeybinding(inputPopupView, gocui.KeyArrowDown, gocui.ModNone, ip.selectNext); err != nil {
+		return err
+	}
+
+	// Up
+	if err := g.SetKeybinding(inputPopupView, gocui.KeyArrowUp, gocui.ModNone, ip.selectPrevious); err != nil {
 		return err
 	}
 
@@ -55,9 +66,11 @@ func (ip *inputPopup) layout(g *gocui.Gui) error {
 		v.Frame = true
 		v.Title = ip.title
 		v.Editable = true
-		_, err = v.Write([]byte(ip.preload))
-		if err != nil {
-			return err
+		if len(ip.preload) > 0 {
+			_, err = v.Write([]byte(ip.preload[ip.sel]))
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -94,7 +107,33 @@ func (ip *inputPopup) validate(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-func (ip *inputPopup) ActivateWithContent(title string, content string) <-chan string {
+func (ip *inputPopup) selectNext(g *gocui.Gui, v *gocui.View) error {
+	if ip.sel < len(ip.preload)-1 {
+		ip.sel++
+		v.Clear()
+		_, err := v.Write([]byte(ip.preload[ip.sel]))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (ip *inputPopup) selectPrevious(g *gocui.Gui, v *gocui.View) error {
+	if ip.sel > 0 {
+		ip.sel--
+		v.Clear()
+		_, err := v.Write([]byte(ip.preload[ip.sel]))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (ip *inputPopup) ActivateWithContent(title string, content []string) <-chan string {
 	ip.preload = content
 	return ip.Activate(title)
 }
