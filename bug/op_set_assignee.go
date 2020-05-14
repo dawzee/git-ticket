@@ -44,11 +44,6 @@ func (op *SetAssigneeOperation) Validate() error {
 		return err
 	}
 
-	// TODO
-	//if err := op.Assignee.Validate(); err != nil {
-	//	return errors.Wrap(err, "assignee")
-	//}
-
 	return nil
 }
 

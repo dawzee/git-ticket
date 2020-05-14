@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/MichaelMure/git-bug/cache"
@@ -13,6 +12,11 @@ import (
 )
 
 func runAssign(cmd *cobra.Command, args []string) error {
+
+	if len(args) < 1 {
+		return fmt.Errorf("no user supplied")
+	}
+
 	backend, err := cache.NewRepoCache(repo)
 	if err != nil {
 		return err
@@ -22,6 +26,7 @@ func runAssign(cmd *cobra.Command, args []string) error {
 
 	// TODO allow the user to clear the assignee field
 	user := args[0]
+	args = args[1:]
 
 	b, args, err := _select.ResolveBug(backend, args)
 	if err != nil {
@@ -42,26 +47,25 @@ func runAssign(cmd *cobra.Command, args []string) error {
 		if i.Id.HasPrefix(user) || strings.Contains(i.Name, user) {
 			if assigneeId != "" {
 				// TODO instead of doing this we could allow the user to select from a list
-				fmt.Printf("Multiple users matching %s\n", user)
-				return nil
+				return fmt.Errorf("multiple users matching %s", user)
 			}
 			assigneeId = i.Id
 		}
 	}
 
 	if assigneeId == "" {
-		fmt.Printf("No users matching %s\n", user)
-		return nil
+		return fmt.Errorf("no users matching %s", user)
 	}
 
 	// Check the ticket is not already assigned to the new assignee
-	currentAssignee, err := backend.ResolveIdentityExcerpt(b.Snapshot().Assignee.Id())
-	if err != nil {
-		return err
-	}
-	if assigneeId == currentAssignee.Id {
-		fmt.Printf("Ticket already assigned to %s\n", currentAssignee.Name)
-		return nil
+	if b.Snapshot().Assignee != nil {
+		currentAssignee, err := backend.ResolveIdentityExcerpt(b.Snapshot().Assignee.Id())
+		if err != nil {
+			return err
+		}
+		if assigneeId == currentAssignee.Id {
+			return fmt.Errorf("ticket already assigned to %s", currentAssignee.Name)
+		}
 	}
 
 	// Looks good, get the full identitiy and update the ticket
@@ -75,14 +79,14 @@ func runAssign(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(os.Stderr, "Assigning ticket to: %s\n", i.DisplayName())
+	fmt.Printf("Assigning ticket %s to %s\n", b.Id().Human(), i.DisplayName())
 
 	return b.Commit()
 }
 
 var assignCmd = &cobra.Command{
-	Use:     "assign <user>",
-	Short:   "Assign a user.",
+	Use:     "assign <user> [<id>]",
+	Short:   "Assign a user to a ticket.",
 	PreRunE: loadRepo,
 	RunE:    runAssign,
 }
