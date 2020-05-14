@@ -31,6 +31,15 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 
 	snapshot := b.Snapshot()
 
+	assigneeName := "UNASSIGNED"
+	if snapshot.Assignee != nil {
+		assignee, err := backend.ResolveIdentityExcerpt(snapshot.Assignee.Id())
+		if err != nil {
+			return err
+		}
+		assigneeName = assignee.DisplayName()
+	}
+
 	if len(snapshot.Comments) == 0 {
 		return errors.New("invalid bug: no comment")
 	}
@@ -39,6 +48,8 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 
 	if showFieldsQuery != "" {
 		switch showFieldsQuery {
+		case "assignee":
+			fmt.Printf("%s\n", assigneeName)
 		case "author":
 			fmt.Printf("%s\n", firstComment.Author.DisplayName())
 		case "authorEmail":
@@ -75,10 +86,11 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 	}
 
 	// Header
-	fmt.Printf("[%s] %s %s\n\n",
+	fmt.Printf("[%s] %s %s - %s\n\n",
 		colors.Yellow(snapshot.Status),
 		colors.Cyan(snapshot.Id().Human()),
 		snapshot.Title,
+		colors.Blue(assigneeName),
 	)
 
 	fmt.Printf("%s opened this issue %s\n\n",
@@ -153,5 +165,5 @@ var showCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(showCmd)
 	showCmd.Flags().StringVarP(&showFieldsQuery, "field", "f", "",
-		"Select field to display. Valid values are [author,authorEmail,createTime,humanId,id,labels,shortId,status,title,actors,participants]")
+		"Select field to display. Valid values are [assignee,author,authorEmail,createTime,humanId,id,labels,shortId,status,title,actors,participants]")
 }

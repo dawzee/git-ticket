@@ -20,12 +20,24 @@ func TestOperationPackSerialize(t *testing.T) {
 	addCommentOp := NewAddCommentOp(rene, time.Now().Unix(), "message2", nil)
 	setStatusOp := NewSetStatusOp(rene, time.Now().Unix(), MergedStatus)
 	labelChangeOp := NewLabelChangeOperation(rene, time.Now().Unix(), []Label{"added"}, []Label{"removed"})
+	setChecklistOp := NewSetChecklistOp(rene, time.Now().Unix(), Checklist{Label: "123",
+		Title: "123 Checklist",
+		Questions: []ChecklistQuestion{
+			ChecklistQuestion{Question: "1?"},
+			ChecklistQuestion{Question: "2?"},
+			ChecklistQuestion{Question: "3?"},
+		},
+	})
+	mickey := identity.NewBare("Mickey Mouse", "mm@disney.com")
+	setAssigneeOp := NewSetAssigneeOp(rene, time.Now().Unix(), mickey)
 
 	opp.Append(createOp)
 	opp.Append(setTitleOp)
 	opp.Append(addCommentOp)
 	opp.Append(setStatusOp)
 	opp.Append(labelChangeOp)
+	opp.Append(setChecklistOp)
+	opp.Append(setAssigneeOp)
 
 	opMeta := NewSetTitleOp(rene, time.Now().Unix(), "title3", "title2")
 	opMeta.SetMetadata("key", "value")
@@ -49,6 +61,7 @@ func TestOperationPackSerialize(t *testing.T) {
 	assert.NoError(t, err)
 
 	ensureIDs(t, opp)
+	mickey.Id()
 
 	assert.Equal(t, opp, opp2)
 }

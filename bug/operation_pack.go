@@ -107,6 +107,10 @@ func (opp *OperationPack) unmarshalOp(raw []byte, _type OperationType) (Operatio
 		op := &SetChecklistOperation{}
 		err := json.Unmarshal(raw, &op)
 		return op, err
+	case SetAssigneeOp:
+		op := &SetAssigneeOperation{}
+		err := json.Unmarshal(raw, &op)
+		return op, err
 	default:
 		return nil, fmt.Errorf("unknown operation type %v", _type)
 	}

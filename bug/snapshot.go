@@ -19,6 +19,7 @@ type Snapshot struct {
 	Labels       []Label
 	Checklists   map[string]Checklist
 	Author       identity.Interface
+	Assignee     identity.Interface
 	Actors       []identity.Interface
 	Participants []identity.Interface
 	CreatedAt    time.Time

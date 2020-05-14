@@ -54,16 +54,25 @@ func runLsBug(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		var name string
+		var authorName string
 		if b.AuthorId != "" {
 			author, err := backend.ResolveIdentityExcerpt(b.AuthorId)
 			if err != nil {
-				name = "<missing author data>"
+				authorName = "<missing author data>"
 			} else {
-				name = author.DisplayName()
+				authorName = author.DisplayName()
 			}
 		} else {
-			name = b.LegacyAuthor.DisplayName()
+			authorName = b.LegacyAuthor.DisplayName()
+		}
+
+		assigneeName := "UNASSIGNED"
+		if b.AssigneeId != "" {
+			assignee, err := backend.ResolveIdentityExcerpt(b.AssigneeId)
+			if err != nil {
+				return err
+			}
+			assigneeName = assignee.DisplayName()
 		}
 
 		var labelsTxt strings.Builder
@@ -77,18 +86,20 @@ func runLsBug(cmd *cobra.Command, args []string) error {
 		// truncate + pad if needed
 		labelsFmt := text.TruncateMax(labelsTxt.String(), 10)
 		titleFmt := text.LeftPadMaxLine(b.Title, 50-text.Len(labelsFmt), 0)
-		authorFmt := text.LeftPadMaxLine(name, 15, 0)
+		authorFmt := text.LeftPadMaxLine(authorName, 15, 0)
+		assigneeFmt := text.LeftPadMaxLine(assigneeName, 15, 0)
 
 		comments := fmt.Sprintf("%4d 💬", b.LenComments)
 		if b.LenComments > 9999 {
 			comments = "    ∞ 💬"
 		}
 
-		fmt.Printf("%s %s\t%s\t%s\t%s\n",
+		fmt.Printf("%s %s\t%s\t%s\t%s\t%s\n",
 			colors.Cyan(b.Id.Human()),
-			colors.Yellow(b.Status),
+			text.LeftPadMaxLine(colors.Yellow(b.Status), 10, 0),
 			titleFmt+labelsFmt,
 			colors.Magenta(authorFmt),
+			colors.Blue(assigneeFmt),
 			comments,
 		)
 	}
