@@ -47,8 +47,8 @@ func (op *SetChecklistOperation) Validate() error {
 		return err
 	}
 
-	for _, cl := range op.Checklist.Questions {
-		if err := cl.State.Validate(); err != nil {
+	for _, q := range op.Checklist.Questions {
+		if err := q.State.Validate(); err != nil {
 			return errors.Wrap(err, "state")
 		}
 	}

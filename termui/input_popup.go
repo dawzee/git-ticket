@@ -108,7 +108,7 @@ func (ip *inputPopup) validate(g *gocui.Gui, v *gocui.View) error {
 }
 
 func (ip *inputPopup) selectNext(g *gocui.Gui, v *gocui.View) error {
-	if len(ip.preload) > 0 && ip.sel < len(ip.preload)-1 {
+	if ip.sel < len(ip.preload)-1 {
 		ip.sel++
 		v.Clear()
 		_, err := v.Write([]byte(ip.preload[ip.sel]))
@@ -121,7 +121,7 @@ func (ip *inputPopup) selectNext(g *gocui.Gui, v *gocui.View) error {
 }
 
 func (ip *inputPopup) selectPrevious(g *gocui.Gui, v *gocui.View) error {
-	if len(ip.preload) > 0 && ip.sel > 0 {
+	if ip.sel > 0 {
 		ip.sel--
 		v.Clear()
 		_, err := v.Write([]byte(ip.preload[ip.sel]))
