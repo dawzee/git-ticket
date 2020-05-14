@@ -289,9 +289,12 @@ func (repo *GitRepo) storeCommitRaw(treeHash git.Hash, extraArgs ...string) (git
 		// There are more than one entries, or some other error.
 		return "", errors.Wrap(err, "failed to read local commit.gpgsign")
 	}
-	if gpgsign {
-		args = append(args, "-S")
+
+	if !gpgsign {
+		return "", fmt.Errorf("Signing is disabled in your git configuration but is mandatory in git-ticket workflow")
 	}
+
+	args = append(args, "-S")
 
 	args = append(args, extraArgs...)
 
