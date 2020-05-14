@@ -5,16 +5,12 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/MichaelMure/git-bug/bridge/core/auth"
-	"github.com/MichaelMure/git-bug/util/colors"
 	"github.com/MichaelMure/git-bug/util/interrupt"
 )
 
@@ -155,111 +151,5 @@ func PromptChoice(prompt string, choices []string) (int, error) {
 		}
 
 		return index - 1, nil
-	}
-}
-
-func PromptURLWithRemote(prompt, name string, validRemotes []string, validators ...PromptValidator) (string, error) {
-	if len(validRemotes) == 0 {
-		return Prompt(prompt, name, validators...)
-	}
-
-	sort.Strings(validRemotes)
-
-	for {
-		_, _ = fmt.Fprintln(os.Stderr, "\nDetected projects:")
-
-		for i, remote := range validRemotes {
-			_, _ = fmt.Fprintf(os.Stderr, "[%d]: %v\n", i+1, remote)
-		}
-
-		_, _ = fmt.Fprintf(os.Stderr, "\n[0]: Another project\n\n")
-		_, _ = fmt.Fprintf(os.Stderr, "Select option: ")
-
-		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
-		if err != nil {
-			return "", err
-		}
-
-		line = strings.TrimSpace(line)
-
-		index, err := strconv.Atoi(line)
-		if err != nil || index < 0 || index > len(validRemotes) {
-			_, _ = fmt.Fprintln(os.Stderr, "invalid input")
-			continue
-		}
-
-		// if user want to enter another project url break this loop
-		if index == 0 {
-			break
-		}
-
-		return validRemotes[index-1], nil
-	}
-
-	return Prompt(prompt, name, validators...)
-}
-
-func PromptCredential(target, name string, credentials []auth.Credential, choices []string) (auth.Credential, int, error) {
-	if len(credentials) == 0 && len(choices) == 0 {
-		return nil, 0, fmt.Errorf("no possible choice")
-	}
-	if len(credentials) == 0 && len(choices) == 1 {
-		return nil, 0, nil
-	}
-
-	sort.Sort(auth.ById(credentials))
-
-	for {
-		_, _ = fmt.Fprintln(os.Stderr)
-
-		offset := 0
-		for i, choice := range choices {
-			_, _ = fmt.Fprintf(os.Stderr, "[%d]: %s\n", i+1, choice)
-			offset++
-		}
-
-		if len(credentials) > 0 {
-			_, _ = fmt.Fprintln(os.Stderr)
-			_, _ = fmt.Fprintf(os.Stderr, "Existing %s for %s:\n", name, target)
-
-			for i, cred := range credentials {
-				meta := make([]string, 0, len(cred.Metadata()))
-				for k, v := range cred.Metadata() {
-					meta = append(meta, k+":"+v)
-				}
-				sort.Strings(meta)
-				metaFmt := strings.Join(meta, ",")
-
-				fmt.Printf("[%d]: %s => (%s) (%s)\n",
-					i+1+offset,
-					colors.Cyan(cred.ID().Human()),
-					metaFmt,
-					cred.CreateTime().Format(time.RFC822),
-				)
-			}
-		}
-
-		_, _ = fmt.Fprintln(os.Stderr)
-		_, _ = fmt.Fprintf(os.Stderr, "Select option: ")
-
-		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
-		_, _ = fmt.Fprintln(os.Stderr)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		line = strings.TrimSpace(line)
-		index, err := strconv.Atoi(line)
-		if err != nil || index < 1 || index > len(choices)+len(credentials) {
-			_, _ = fmt.Fprintln(os.Stderr, "invalid input")
-			continue
-		}
-
-		switch {
-		case index <= len(choices):
-			return nil, index - 1, nil
-		default:
-			return credentials[index-len(choices)-1], 0, nil
-		}
 	}
 }

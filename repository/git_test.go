@@ -90,10 +90,5 @@ func TestGitRepo_StoreCommit(t *testing.T) {
 	repo := CreateTestRepo(false)
 	defer CleanupTestRepos(t, repo)
 
-	// Commit and expect no signature.
-	checkStoreCommit(t,repo, "N")
-
-	// Commit and expect a good signature with unknown validity.
-	setupSigningKey(t, repo)
 	checkStoreCommit(t, repo, "U")
 }
