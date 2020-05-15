@@ -1,8 +1,0 @@
-query CurrentIdentity {
-  repository {
-    userIdentity {
-      displayName
-      avatarUrl
-    }
-  }
-}
