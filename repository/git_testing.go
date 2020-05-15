@@ -61,7 +61,7 @@ func setupSigningKey(repo *GitRepo) error {
 	// Generate a key pair for signing commits.
 	entity, err := openpgp.NewEntity("First Last", "", "fl@example.org", nil)
 	if err != nil {
-		return fmt.Errorf("Fialed to create a gpg key pair: %s", err)
+		return fmt.Errorf("failed to create a gpg key pair: %s", err)
 	}
 
 	if err = config.StoreString("user.signingkey", entity.PrivateKey.KeyIdString()); err != nil {
