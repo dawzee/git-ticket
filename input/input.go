@@ -22,6 +22,7 @@ import (
 
 const messageFilename = "BUG_MESSAGE_EDITMSG"
 const keyFilename = "KEY_EDITMSG"
+const checklistFilename = "CHECKLIST_EDITMSG"
 
 // ErrEmptyMessage is returned when the required message has not been entered
 var ErrEmptyMessage = errors.New("empty message")
@@ -214,6 +215,7 @@ const checklistPreamble = `# %s
 
 # Leave lines starting with '#' unchanged. States in [] can be: PENDING, PASSED, FAILED or NOT APPLICABLE. Anything between will be saved as a comment.
 # Saving an empty (or invalid format) aborts the operation.
+
 `
 
 // ChecklistEditorInput will open the default editor in the terminal with a
@@ -224,13 +226,16 @@ func ChecklistEditorInput(repo repository.RepoCommon, checklist bug.Checklist) (
 
 	template := fmt.Sprintf(checklistPreamble, checklist.Title)
 
-	for i, q := range checklist.Questions {
-		template = template + fmt.Sprintf("# %d : %s\n", i+1, q.Question)
-		template = template + fmt.Sprintf("%s\n", q.Comment)
-		template = template + fmt.Sprintf("[%s]\n", q.State)
+	for sn, s := range checklist.Sections {
+		template = template + fmt.Sprintf("#\n#### %s ####\n#\n", s.Title)
+		for qn, q := range s.Questions {
+			template = template + fmt.Sprintf("# %d.%d : %s\n", sn+1, qn+1, q.Question)
+			template = template + fmt.Sprintf("%s\n", q.Comment)
+			template = template + fmt.Sprintf("[%s]\n", q.State)
+		}
 	}
 
-	raw, err := launchEditorWithTemplate(repo, messageFilename, template)
+	raw, err := launchEditorWithTemplate(repo, checklistFilename, template)
 
 	if err != nil {
 		return false, err
@@ -241,51 +246,67 @@ func ChecklistEditorInput(repo repository.RepoCommon, checklist bug.Checklist) (
 	var commentText string
 	var inComment bool
 	var checklistChanged bool
+	nextS := 1
 	nextQ := 1
 
-	questionSearch, _ := regexp.Compile(`^# (\d+) : (\w+)`)
-	stateSearch, _ := regexp.Compile(`^\[(PENDING|PASSED|FAILED|NOT APPLICABLE)\]`)
+	questionSearch, _ := regexp.Compile(`^# (\d+)\.(\d+) : (\w+)`)
+	stateSearch, _ := regexp.Compile(`^\[(.+)\]$`)
 
 	for l, line := range lines {
 		if !inComment {
 			if questionSearch.MatchString(line) {
 				// check question number and reset comment
-				thisQ, err := strconv.Atoi(questionSearch.FindStringSubmatch(line)[1])
-				if err != nil || thisQ != nextQ {
-					// something is wrong with the format
-					return checklistChanged, fmt.Errorf("checklist parse error, line %d", l)
+				matches := questionSearch.FindStringSubmatch(line)
+				if thisS, err := strconv.Atoi(matches[1]); err != nil || thisS != nextS {
+					// unexpected section number
+					return checklistChanged, fmt.Errorf("checklist parse error (section number), line %d", l)
+				}
+				if thisQ, err := strconv.Atoi(matches[2]); err != nil || thisQ != nextQ {
+					// unexpected question number
+					return checklistChanged, fmt.Errorf("checklist parse error (question number), line %d", l)
 				}
 				inComment = true
 				commentText = ""
+			} else if nextQ != 1 {
+				// next question line missing
+				return checklistChanged, fmt.Errorf("checklist parse error (question line), line %d", l)
 			}
-			continue
 		} else {
 			if stateSearch.MatchString(line) {
 				newState, err := bug.StateFromString(stateSearch.FindStringSubmatch(line)[1])
 				if err != nil {
 					// something is wrong with the format
-					return checklistChanged, fmt.Errorf("checklist parse error, line %d", l)
+					return checklistChanged, fmt.Errorf("checklist parse error (invalid state), line %d", l)
 				}
 				// check and save comment
-				if checklist.Questions[nextQ-1].Comment != strings.TrimSuffix(commentText, "\n") {
-					checklist.Questions[nextQ-1].Comment = strings.TrimSuffix(commentText, "\n")
+				if checklist.Sections[nextS-1].Questions[nextQ-1].Comment != strings.TrimSuffix(commentText, "\n") {
+					checklist.Sections[nextS-1].Questions[nextQ-1].Comment = strings.TrimSuffix(commentText, "\n")
 					checklistChanged = true
 				}
 				// check and save state
-				if checklist.Questions[nextQ-1].State != newState {
-					checklist.Questions[nextQ-1].State = newState
+				if checklist.Sections[nextS-1].Questions[nextQ-1].State != newState {
+					checklist.Sections[nextS-1].Questions[nextQ-1].State = newState
 					checklistChanged = true
 				}
 				nextQ++
+				if nextQ > len(checklist.Sections[nextS-1].Questions) {
+					nextS++
+					nextQ = 1
+				}
+				if nextS > len(checklist.Sections) {
+					break
+				}
 				inComment = false
-				continue
+			} else {
+				// we're still in the comment section
+				commentText = commentText + line + "\n"
 			}
-			commentText = commentText + line + "\n"
 		}
 	}
 
-	if nextQ != len(checklist.Questions)+1 {
-		return checklistChanged, fmt.Errorf("checklist parse error, question count")
+	if nextS != len(checklist.Sections)+1 {
+		// if nextQ != len(checklist.Questions)+1 {
+		return checklistChanged, fmt.Errorf("checklist parse error, section/question count")
 	}
 
 	return checklistChanged, nil

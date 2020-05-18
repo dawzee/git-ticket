@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/MichaelMure/git-bug/bug"
 	"github.com/MichaelMure/git-bug/cache"
 	_select "github.com/MichaelMure/git-bug/commands/select"
 	"github.com/MichaelMure/git-bug/util/colors"
@@ -31,6 +32,7 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 
 	snapshot := b.Snapshot()
 
+	// process assignee
 	assigneeName := "UNASSIGNED"
 	if snapshot.Assignee != nil {
 		assignee, err := backend.ResolveIdentityExcerpt(snapshot.Assignee.Id())
@@ -38,6 +40,20 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		assigneeName = assignee.DisplayName()
+	}
+
+	// process labels
+	var labels []string
+	var workflow string = "<NONE ASSIGNED>"
+
+	for _, lbl := range snapshot.Labels {
+		if strings.HasPrefix(lbl.String(), "workflow:") {
+			workflow = strings.TrimPrefix(lbl.String(), "workflow:")
+		} else if strings.HasPrefix(lbl.String(), "checklist:") {
+			continue
+		} else {
+			labels = append(labels, lbl.String())
+		}
 	}
 
 	if len(snapshot.Comments) == 0 {
@@ -60,9 +76,21 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 			fmt.Printf("%s\n", snapshot.Id().Human())
 		case "id":
 			fmt.Printf("%s\n", snapshot.Id())
+		case "workflow":
+			fmt.Printf("%s\n", workflow)
+		case "checklists":
+			for _, clMap := range snapshot.Checklists {
+				for user, cl := range clMap {
+					reviewer, err := backend.ResolveIdentityExcerpt(user)
+					if err != nil {
+						return err
+					}
+					fmt.Printf("%s reviewed %s: %s\n", reviewer.DisplayName(), cl.LastEdit, cl)
+				}
+			}
 		case "labels":
-			for _, l := range snapshot.Labels {
-				fmt.Printf("%s\n", l.String())
+			for _, l := range labels {
+				fmt.Printf("%s\n", l)
 			}
 		case "actors":
 			for _, a := range snapshot.Actors {
@@ -98,12 +126,22 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 		firstComment.FormatTimeRel(),
 	)
 
-	// Labels
-	var labels = make([]string, len(snapshot.Labels))
-	for i := range snapshot.Labels {
-		labels[i] = string(snapshot.Labels[i])
+	// Workflow
+	fmt.Printf("workflow: %s\n", workflow)
+
+	// Checklists
+	fmt.Printf("checklists:\n")
+	for clLabel, st := range snapshot.GetChecklistCompoundStates() {
+		cl, present := bug.ChecklistStore[clLabel]
+
+		if !present {
+			return fmt.Errorf("\nunknown checklist: %s\n", clLabel)
+		}
+
+		fmt.Printf("- %s : %s\n", cl.Title, st.ColorString())
 	}
 
+	// Labels
 	fmt.Printf("labels: %s\n",
 		strings.Join(labels, ", "),
 	)
@@ -165,5 +203,5 @@ var showCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(showCmd)
 	showCmd.Flags().StringVarP(&showFieldsQuery, "field", "f", "",
-		"Select field to display. Valid values are [assignee,author,authorEmail,createTime,humanId,id,labels,shortId,status,title,actors,participants]")
+		"Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,humanId,id,labels,shortId,status,title,workflow,actors,participants]")
 }

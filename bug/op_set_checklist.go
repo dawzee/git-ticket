@@ -29,7 +29,10 @@ func (op *SetChecklistOperation) Id() entity.Id {
 }
 
 func (op *SetChecklistOperation) Apply(snapshot *Snapshot) {
-	snapshot.Checklists[op.Checklist.Label] = op.Checklist
+	if snapshot.Checklists[op.Checklist.Label] == nil {
+		snapshot.Checklists[op.Checklist.Label] = make(map[entity.Id]ChecklistSnapshot)
+	}
+	snapshot.Checklists[op.Checklist.Label][op.Author.Id()] = ChecklistSnapshot{Checklist: op.Checklist, LastEdit: op.Time()}
 	snapshot.addActor(op.Author)
 
 	item := &SetChecklistTimelineItem{
@@ -47,9 +50,11 @@ func (op *SetChecklistOperation) Validate() error {
 		return err
 	}
 
-	for _, q := range op.Checklist.Questions {
-		if err := q.State.Validate(); err != nil {
-			return errors.Wrap(err, "state")
+	for _, s := range op.Checklist.Sections {
+		for _, q := range s.Questions {
+			if err := q.State.Validate(); err != nil {
+				return errors.Wrap(err, "state")
+			}
 		}
 	}
 
