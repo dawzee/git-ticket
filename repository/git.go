@@ -351,6 +351,11 @@ func (repo *GitRepo) CopyRef(source string, dest string) error {
 	return err
 }
 
+func (repo *GitRepo) ResolveRef(ref string) (git.Hash, error) {
+	stdout, err := repo.runGitCommand("show-ref", "-s", ref)
+	return git.Hash(stdout), err
+}
+
 // ListCommits will return the list of commit hashes of a ref, in chronological order
 func (repo *GitRepo) ListCommits(ref string) ([]git.Hash, error) {
 	stdout, err := repo.runGitCommand("rev-list", "--first-parent", "--reverse", ref)

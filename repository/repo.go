@@ -80,6 +80,8 @@ type Repo interface {
 	// CopyRef will create a new reference with the same value as another one
 	CopyRef(source string, dest string) error
 
+	ResolveRef(ref string) (git.Hash, error)
+
 	// ListCommits will return the list of tree hashes of a ref, in chronological order
 	ListCommits(ref string) ([]git.Hash, error)
 
