@@ -128,7 +128,7 @@ func (c Checklist) String() string {
 		for qn, q := range s.Questions {
 			result = result + fmt.Sprintf("(%d.%d) %s [%s]\n", sn+1, qn+1, q.Question, q.State.ColorString())
 			if q.Comment != "" {
-				result = result + fmt.Sprintf("# %s\n", strings.ReplaceAll(q.Comment, "\n", "\n# "))
+				result = result + fmt.Sprintf("# %s\n", strings.Replace(q.Comment, "\n", "\n# ", -1))
 			}
 		}
 	}
