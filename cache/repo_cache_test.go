@@ -72,6 +72,30 @@ func TestCache(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, cache.QueryBugs(query), 2)
 
+	// Config
+	configData1 := `{"foo": ["bar1", 2 3], "test", 1.2}`
+	configData2 := `{"foo": ["bar2", 4 5], "test", 1.3}`
+	err = cache.SetConfig("test1", []byte(configData1))
+	require.NoError(t, err)
+	err = cache.SetConfig("test1", []byte(configData1))
+	require.NoError(t, err)
+
+	configs, err := cache.ListConfigs()
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
+	require.Equal(t, "test1", configs[0])
+
+	data, err := cache.GetConfig("test1")
+	require.NoError(t, err)
+	require.Equal(t, configData1, string(data))
+
+	err = cache.SetConfig("test1", []byte(configData2))
+	require.NoError(t, err)
+
+	data, err = cache.GetConfig("test1")
+	require.NoError(t, err)
+	require.Equal(t, configData2, string(data))
+
 	// Close
 	require.NoError(t, cache.Close())
 	require.Empty(t, cache.bugs)
@@ -155,4 +179,43 @@ func TestPushPull(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, cacheA.AllBugsIds(), 2)
+
+	// Create config
+	configData1 := `{"foo": ["bar1", 2 3], "test", 1.2}`
+	err = cacheA.SetConfig("test1", []byte(configData1))
+	require.NoError(t, err)
+	_, err = cacheA.Push("origin")
+	require.NoError(t, err)
+
+	err = cacheB.Pull("origin")
+	require.NoError(t, err)
+
+	configs, err := cacheB.ListConfigs()
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
+	require.Equal(t, "test1", configs[0])
+
+	data, err := cacheB.GetConfig("test1")
+	require.NoError(t, err)
+	require.Equal(t, configData1, string(data))
+
+	configData2 := `{"foo": ["bar2", 4 5], "test", 1.3}`
+	err = cacheB.SetConfig("test1", []byte(configData2))
+	require.NoError(t, err)
+	data, err = cacheB.GetConfig("test1")
+	require.NoError(t, err)
+	require.Equal(t, configData2, string(data))
+
+	_, err = cacheB.Push("origin")
+	require.NoError(t, err)
+
+	// Conflict
+	configData3 := `{"foo": "bar2"}`
+	err = cacheA.SetConfig("test1", []byte(configData3))
+	require.NoError(t, err)
+	err = cacheA.Pull("origin")
+	require.NoError(t, err)
+	data, err = cacheA.GetConfig("test1")
+	require.NoError(t, err)
+	require.Equal(t, configData2, string(data))
 }

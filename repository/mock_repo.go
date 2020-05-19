@@ -163,6 +163,13 @@ func (r *mockRepoForTest) ListRefs(refspec string) ([]string, error) {
 	return keys, nil
 }
 
+func (r *mockRepoForTest) ResolveRef(ref string) (git.Hash, error) {
+	if val, ok := r.refs[ref]; ok {
+		return val, nil
+	}
+	return git.Hash(""), fmt.Errorf("Unknown ref")
+}
+
 func (r *mockRepoForTest) ListCommits(ref string) ([]git.Hash, error) {
 	var hashes []git.Hash
 
