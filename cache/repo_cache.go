@@ -795,7 +795,7 @@ func (c *RepoCache) Pull(remote string) error {
 	}
 
 	err = c.MergeConfigs(remote)
-	if err == nil {
+	if err != nil {
 		return err
 	}
 
@@ -1104,6 +1104,7 @@ func (c *RepoCache) finishIdentity(i *identity.Identity, metadata map[string]str
 	return cached, nil
 }
 
+// List configurations stored in git
 func (c *RepoCache) ListConfigs() ([]string, error) {
 	c.muConfig.RLock()
 	defer c.muConfig.RUnlock()
@@ -1121,6 +1122,7 @@ func (c *RepoCache) ListConfigs() ([]string, error) {
 	return configs, nil
 }
 
+// Store the configuration data under the given name
 func (c *RepoCache) SetConfig(name string, config []byte) error {
 	c.muConfig.Lock()
 	defer c.muConfig.Unlock()
@@ -1188,6 +1190,7 @@ func (c *RepoCache) SetConfig(name string, config []byte) error {
 	return nil
 }
 
+// Get the named configuration data
 func (c *RepoCache) GetConfig(name string) ([]byte, error) {
 	c.muConfig.RLock()
 	defer c.muConfig.RUnlock()
@@ -1221,9 +1224,12 @@ func (c *RepoCache) GetConfig(name string) ([]byte, error) {
 			return data, nil
 		}
 	}
-	return nil, nil
+	return nil, fmt.Errorf(
+		`cache: failed to find "config.json" blob in the tree corresponding to the HEAD of %s`,
+		refName)
 }
 
+// Merge the configuration data fetched from the remote
 func (c *RepoCache) MergeConfigs(remote string) error {
 	c.muConfig.RLock()
 	defer c.muConfig.RUnlock()
@@ -1249,13 +1255,14 @@ func (c *RepoCache) MergeConfigs(remote string) error {
 			if err != nil {
 				return fmt.Errorf("cache: failed to copy %s to %s: %s", remoteRef, localRef, err)
 			}
+			return nil
 		}
 
 		localCommit, err := c.repo.ResolveRef(localRef)
 		if err != nil {
 			return fmt.Errorf("cache: failed to resolve %s: %s", localRef, err)
 		}
-		remoteCommit, _ := c.repo.ResolveRef(remoteRef)
+		remoteCommit, err := c.repo.ResolveRef(remoteRef)
 		if err != nil {
 			return fmt.Errorf("cache: failed to resolve %s: %s", remoteRef, err)
 		}

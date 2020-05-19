@@ -351,6 +351,7 @@ func (repo *GitRepo) CopyRef(source string, dest string) error {
 	return err
 }
 
+// Resolve the reference to the commit hash it represents
 func (repo *GitRepo) ResolveRef(ref string) (git.Hash, error) {
 	stdout, err := repo.runGitCommand("show-ref", "-s", ref)
 	return git.Hash(stdout), err
