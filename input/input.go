@@ -279,8 +279,9 @@ func ChecklistEditorInput(repo repository.RepoCommon, checklist bug.Checklist) (
 					return checklistChanged, fmt.Errorf("checklist parse error (invalid state), line %d", l)
 				}
 				// check and save comment
-				if checklist.Sections[nextS-1].Questions[nextQ-1].Comment != strings.TrimSuffix(commentText, "\n") {
-					checklist.Sections[nextS-1].Questions[nextQ-1].Comment = strings.TrimSuffix(commentText, "\n")
+				strippedCommentText := strings.TrimSuffix(commentText, "\n")
+				if checklist.Sections[nextS-1].Questions[nextQ-1].Comment != strippedCommentText {
+					checklist.Sections[nextS-1].Questions[nextQ-1].Comment = strippedCommentText
 					checklistChanged = true
 				}
 				// check and save state
@@ -293,9 +294,6 @@ func ChecklistEditorInput(repo repository.RepoCommon, checklist bug.Checklist) (
 					nextS++
 					nextQ = 1
 				}
-				if nextS > len(checklist.Sections) {
-					break
-				}
 				inComment = false
 			} else {
 				// we're still in the comment section
@@ -305,7 +303,6 @@ func ChecklistEditorInput(repo repository.RepoCommon, checklist bug.Checklist) (
 	}
 
 	if nextS != len(checklist.Sections)+1 {
-		// if nextQ != len(checklist.Questions)+1 {
 		return checklistChanged, fmt.Errorf("checklist parse error, section/question count")
 	}
 

@@ -107,7 +107,7 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 		case "title":
 			fmt.Printf("%s\n", snapshot.Title)
 		default:
-			return fmt.Errorf("\nUnsupported field: %s\n", showFieldsQuery)
+			return fmt.Errorf("unsupported field: %s", showFieldsQuery)
 		}
 
 		return nil
@@ -135,7 +135,7 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 		cl, present := bug.ChecklistStore[clLabel]
 
 		if !present {
-			return fmt.Errorf("\nunknown checklist: %s\n", clLabel)
+			return fmt.Errorf("unknown checklist: %s", clLabel)
 		}
 
 		fmt.Printf("- %s : %s\n", cl.Title, st.ColorString())

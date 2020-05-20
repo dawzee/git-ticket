@@ -182,10 +182,12 @@ func (snap *Snapshot) GetChecklistCompoundStates() map[string]ChecklistState {
 				// at least one user has edited this checklist
 				for _, cl := range clMap {
 					clState := cl.CompoundState()
-					if clState == Failed {
+					switch clState {
+					case Failed:
 						// someone failed it, it's failed
 						states[lblStr] = Failed
-					} else if states[lblStr] != Failed && clState == Passed {
+						break
+					case Passed:
 						// someone passed it, and no-one failed it yet
 						states[lblStr] = Passed
 					}
