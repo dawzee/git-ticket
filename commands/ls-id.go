@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 )
 
 func runLsID(cmd *cobra.Command, args []string) error {
@@ -34,7 +34,7 @@ func runLsID(cmd *cobra.Command, args []string) error {
 
 var listBugIDCmd = &cobra.Command{
 	Use:     "ls-id [<prefix>]",
-	Short:   "List bug identifiers.",
+	Short:   "List ticket identifiers.",
 	PreRunE: loadRepo,
 	RunE:    runLsID,
 }

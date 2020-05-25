@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/MichaelMure/git-bug/repository"
-	"github.com/MichaelMure/git-bug/util/git"
+	"github.com/daedaleanai/git-ticket/repository"
+	"github.com/daedaleanai/git-ticket/util/git"
 	"github.com/pkg/errors"
 )
 

@@ -3,8 +3,8 @@ package cache
 import (
 	"strings"
 
-	"github.com/MichaelMure/git-bug/bug"
-	"github.com/MichaelMure/git-bug/entity"
+	"github.com/daedaleanai/git-ticket/bug"
+	"github.com/daedaleanai/git-ticket/entity"
 )
 
 // resolver has the resolving functions needed by filters.

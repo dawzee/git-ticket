@@ -3,8 +3,8 @@ package bug
 import (
 	"encoding/json"
 
-	"github.com/MichaelMure/git-bug/entity"
-	"github.com/MichaelMure/git-bug/identity"
+	"github.com/daedaleanai/git-ticket/entity"
+	"github.com/daedaleanai/git-ticket/identity"
 )
 
 var _ Operation = &NoOpOperation{}

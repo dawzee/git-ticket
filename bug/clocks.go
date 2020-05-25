@@ -1,7 +1,7 @@
 package bug
 
 import (
-	"github.com/MichaelMure/git-bug/repository"
+	"github.com/daedaleanai/git-ticket/repository"
 )
 
 // Witnesser will read all the available Bug to recreate the different logical

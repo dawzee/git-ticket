@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 )
 
 // PromptValidator is a validator for a user entry

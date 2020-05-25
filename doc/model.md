@@ -1,6 +1,6 @@
 # Data model
 
-If you are not familiar with [git internals](https://git-scm.com/book/en/v1/Git-Internals), you might first want to read about them, as the `git-bug` data model is built on top of them.
+If you are not familiar with [git internals](https://git-scm.com/book/en/v1/Git-Internals), you might first want to read about them, as the `git-ticket` data model is built on top of them.
 
 The biggest problem when creating a distributed bug tracker is that there is no central authoritative server (doh!). This implies some constraints.
 
@@ -10,7 +10,7 @@ To deal with this problem, you need a way to merge these changes in a meaningful
 
 Instead of storing the final bug data directly, we store a series of edit `Operation`s.
 
-Note: In git-bug internally it is a golang struct, but in the git repo it is stored as JSON, as seen later.
+Note: In git-ticket internally it is a golang struct, but in the git repo it is stored as JSON, as seen later.
 
 These `Operation`s are aggregated in an `OperationPack`, a simple array. An `OperationPack` represents an edit session of a bug. We store this pack in git as a git `Blob`; that consists of a string containing a JSON array of operations. One such pack -- here with two operations -- might look like this:
 
@@ -75,17 +75,17 @@ Now that we have this, we can easily merge our bugs without conflict. When pulli
 
 The same way git can't have a simple counter as identifier for it's commits as SVN does, we can't have consecutive identifiers for bugs.
 
-`git-bug` uses as identifier the hash of the first commit in the chain of commits of the bug. As this hash is ultimately computed with the content of the `CREATE` operation that includes title, message and a timestamp, it will be unique and prevent collision.
+`git-ticket` uses as identifier the hash of the first commit in the chain of commits of the bug. As this hash is ultimately computed with the content of the `CREATE` operation that includes title, message and a timestamp, it will be unique and prevent collision.
 
-The same way as git does, this hash is displayed truncated to a 7 characters string to a human user. Note that when specifying a bug id in a command, you can enter as few character as you want, as long as there is no ambiguity. If multiple bugs match your prefix, `git-bug` will complain and display the potential matches.
+The same way as git does, this hash is displayed truncated to a 7 characters string to a human user. Note that when specifying a bug id in a command, you can enter as few character as you want, as long as there is no ambiguity. If multiple bugs match your prefix, `git-ticket` will complain and display the potential matches.
 
 ## You can't rely on the time provided by other people (their clock might by off) for anything other than just display
 
 When in the context of a single bug, events are already ordered without the need of a timestamp. An `OperationPack` is an ordered array of operations. A chain of commits orders `OperationPack`s amongst each other.
 
-Now, to be able to order bugs by creation or last edition time, `git-bug` uses a [Lamport logical clock](https://en.wikipedia.org/wiki/Lamport_timestamps). A Lamport clock is a simple counter of events. When a new bug is created, its creation time will be the highest time value we are aware of plus one. This declares a causality in the event and allows to order bugs.
+Now, to be able to order bugs by creation or last edition time, `git-ticket` uses a [Lamport logical clock](https://en.wikipedia.org/wiki/Lamport_timestamps). A Lamport clock is a simple counter of events. When a new bug is created, its creation time will be the highest time value we are aware of plus one. This declares a causality in the event and allows to order bugs.
 
-When bugs are pushed/pulled to a git remote, it might happen that bugs get the same logical time. This means that they were created or edited concurrently. In this case, `git-bug` will use the timestamp as a second layer of sorting. While the timestamp might be incorrect due to a badly set clock, the drift in sorting is bounded by the first sorting using the logical clock. That means that if users synchronize their bugs regularly, the timestamp will rarely be used, and should still provide a kinda accurate sorting when needed.
+When bugs are pushed/pulled to a git remote, it might happen that bugs get the same logical time. This means that they were created or edited concurrently. In this case, `git-ticket` will use the timestamp as a second layer of sorting. While the timestamp might be incorrect due to a badly set clock, the drift in sorting is bounded by the first sorting using the logical clock. That means that if users synchronize their bugs regularly, the timestamp will rarely be used, and should still provide a kinda accurate sorting when needed.
 
 These clocks are stored in the chain of commits of each bug, as entries in each main git `Tree`. The first commit will have both a creation time and edit time clock, while a later commit will only have an edit time clock. A naive way could be to serialize the clock in a git `Blob` and reference it in the `Tree` as `"create-clock"` for example. The problem is that it would generate a lot of blobs that would need to be exchanged later for what is basically just a number.
 

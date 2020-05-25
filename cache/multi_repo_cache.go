@@ -3,7 +3,7 @@ package cache
 import (
 	"fmt"
 
-	"github.com/MichaelMure/git-bug/repository"
+	"github.com/daedaleanai/git-ticket/repository"
 )
 
 const lockfile = "lock"

@@ -1,21 +1,18 @@
 <p align="center">
     <img width="150px" src="https://cdn.rawgit.com/MichaelMure/git-bug/master/misc/logo/logo-alpha-flat-bg.svg">
 </p>
-<h1 align="center">git-bug</h1>
+<h1 align="center">git-ticket</h1>
 
 <div align="center">
 
-[![Build Status](https://travis-ci.org/MichaelMure/git-bug.svg?branch=master)](https://travis-ci.org/MichaelMure/git-bug)
-[![Backers on Open Collective](https://opencollective.com/git-bug/backers/badge.svg)](#backers)
-[![Sponsors on Open Collective](https://opencollective.com/git-bug/sponsors/badge.svg)](#sponsors)
+[![Build Status](https://travis-ci.org/daedaleanai/git-ticket.svg?branch=master)](https://travis-ci.org/daedaleanai/git-ticket)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3+-blue.svg)](http://www.gnu.org/licenses/gpl-3.0)
-[![GoDoc](https://godoc.org/github.com/MichaelMure/git-bug?status.svg)](https://godoc.org/github.com/MichaelMure/git-bug)
-[![Go Report Card](https://goreportcard.com/badge/github.com/MichaelMure/git-bug)](https://goreportcard.com/report/github.com/MichaelMure/git-bug)
-[![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/the-git-bug/Lobby)
+[![GoDoc](https://godoc.org/github.com/daedaleanai/git-ticket?status.svg)](https://godoc.org/github.com/daedaleanai/git-ticket)
+[![Go Report Card](https://goreportcard.com/badge/github.com/daedaleanai/git-ticket)](https://goreportcard.com/report/github.com/daedaleanai/git-ticket)
 
 </div>
 
-`git-bug` is a bug tracker that:
+`git-ticket` is a bug tracker that:
 
 - **is fully embeded in git**: you only need your git repository to have a bug tracker
 - **is distributed**: use your normal git remote to collaborate, push and pull your bugs!
@@ -30,27 +27,8 @@
 
 ## Installation
 
-<details><summary>Pre-compiled binaries</summary>
-
-1. Go to the [release page](https://github.com/MichaelMure/git-bug/releases/latest) and download the appropriate binary for your system.
-2. Copy the binary anywhere in your $PATH
-3. Rename the binary to `git-bug` (or `git-bug.exe` on windows)
-
-That's all !
-
-</details>
-
-<details><summary>Linux packages</summary>
-
-* [Archlinux (AUR)](https://aur.archlinux.org/packages/?K=git-bug)
-* [NixOS](https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/version-management/git-and-tools/git-bug/default.nix#L31)
-
-</details>
-
-<details><summary>Compile from git (unstable)</summary>
-
 ```shell
-git clone git@github.com:MichaelMure/git-bug.git
+git clone git@github.com:daedaleanai/git-ticket.git
 make install
 ```
 
@@ -60,55 +38,55 @@ If it's not done already, add the golang binary directory in your PATH:
 export PATH=$PATH:$(go env GOROOT)/bin:$(go env GOPATH)/bin
 ```
 
-</details>
 
 ## CLI usage
 
 Create a new identity:
 
 ```
-git bug user create
+git ticket user create
 ```
 
-Create a new bug:
+Create a new ticket:
 
 ```
-git bug add
+git ticket add
 ```
 
 Your favorite editor will open to write a title and a message.
 
 You can push your new entry to a remote:
 ```
-git bug push [<remote>]
+git ticket push [<remote>]
 ```
 
 And pull for updates:
 ```
-git bug pull [<remote>]
+git ticket pull [<remote>]
 ```
 
-List existing bugs:
+List existing tickets:
 ```
-git bug ls
-```
-
-Filter and sort bugs using a [query](doc/queries.md):
-```
-git bug ls "status:open sort:edit"
+git ticket ls
 ```
 
-You can now use commands like `show`, `comment`, `open` or `close` to display and modify bugs. For more details about each command, you can run `git bug <command> --help` or read the [command's documentation](doc/md/git-bug.md).
+Filter and sort tickets using a [query](doc/queries.md):
+```
+git ticket ls "status:open sort:edit"
+```
+
+You can now use commands like `show`, `comment`, `open` or `close` to display and modify tickets. For more details about each command, you can run `git ticket <command> --help` or read the [command's documentation](doc/md/git-ticket.md).
 
 ## Interactive terminal UI
 
-An interactive terminal UI is available using the command `git bug termui` to browse and edit bugs.
+An interactive terminal UI is available using the command `git ticket termui` to browse and edit tickets.
 
 ![Termui recording](misc/termui_recording.gif)
 
+<!--
 ## Web UI (status: WIP)
 
-You can launch a rich Web UI with `git bug webui`.
+You can launch a rich Web UI with `git ticket webui`.
 
 <p align="center">
   <img src="misc/webui1.png" alt="Web UI screenshot 1" width="880">
@@ -158,16 +136,16 @@ The web UI interact with the backend through a GraphQL API. The schema is availa
 Interactively configure a new github bridge:
 
 ```bash
-git bug bridge configure
+git ticket bridge configure
 ```
 
 Or manually:
 
 ```bash
-git bug bridge configure \
+git ticket bridge configure \
     --name=<bridge> \
     --target=github \
-    --url=https://github.com/MichaelMure/git-bug \
+    --url=https://github.com/daedaleanai/git-ticket \
     --login=<login>
     --token=<token>
 ```
@@ -175,20 +153,21 @@ git bug bridge configure \
 Import bugs:
 
 ```bash
-git bug bridge pull [<name>]
+git ticket bridge pull [<name>]
 ```
 
 Export modifications:
 
 ```bash
-git bug bridge push [<name>]
+git ticket bridge push [<name>]
 ```
 
 Deleting a bridge:
 
 ```bash
-git bug bridge rm [<name>]
+git ticket bridge rm [<name>]
 ```
+-->
 
 ## Internals
 
@@ -208,12 +187,13 @@ Interested by how it works ? Have a look at the [data model](doc/model.md) and t
 - extendable data model to support arbitrary bug tracker
 - inflatable raptor
 
+<!--
 ## Contribute
 
 PRs accepted. Drop by the [Gitter lobby](https://gitter.im/the-git-bug/Lobby) for a chat or browse the issues to see what is worked on or discussed.
 
 ```shell
-git clone git@github.com:MichaelMure/git-bug.git
+git clone git@github.com:daedaleanai/git-ticket.git
 ```
 
 You can now run `make` to build the project, or `make install` to install the binary in `$GOPATH/bin/`.
@@ -224,7 +204,7 @@ To work on the web UI, have a look at [the dedicated Readme.](webui/Readme.md)
 ## Contributors :heart:
 
 This project exists thanks to all the people who contribute.
-<a href="https://github.com/MichaelMure/git-bug/graphs/contributors"><img src="https://opencollective.com/git-bug/contributors.svg?width=890&button=false" /></a>
+<a href="https://github.com/daedaleanai/git-ticket/graphs/contributors"><img src="https://opencollective.com/git-bug/contributors.svg?width=890&button=false" /></a>
 
 
 ## Backers
@@ -249,6 +229,7 @@ Support this project by becoming a sponsor. Your logo will show up here with a l
 <a href="https://opencollective.com/git-bug/sponsor/8/website" target="_blank"><img src="https://opencollective.com/git-bug/tiers/sponsor/8/avatar.svg"></a>
 <a href="https://opencollective.com/git-bug/sponsor/9/website" target="_blank"><img src="https://opencollective.com/git-bug/tiers/sponsor/9/avatar.svg"></a>
 
+-->
 
 ## License
 

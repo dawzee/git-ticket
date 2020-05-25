@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/commands/select"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/commands/select"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +31,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 var statusCmd = &cobra.Command{
 	Use:     "status [<id>]",
-	Short:   "Display or change a bug status.",
+	Short:   "Display or change a ticket status.",
 	PreRunE: loadRepo,
 	RunE:    runStatus,
 }

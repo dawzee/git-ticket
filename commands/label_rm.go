@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/commands/select"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/commands/select"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 )
 
 func runLabelRm(cmd *cobra.Command, args []string) error {
@@ -38,7 +38,7 @@ func runLabelRm(cmd *cobra.Command, args []string) error {
 
 var labelRmCmd = &cobra.Command{
 	Use:     "rm [<id>] <label>[...]",
-	Short:   "Remove a label from a bug.",
+	Short:   "Remove a label from a ticket.",
 	PreRunE: loadRepo,
 	RunE:    runLabelRm,
 }

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/MichaelMure/git-bug/commands"
+	"github.com/daedaleanai/git-ticket/commands"
 	"github.com/spf13/cobra/doc"
 )
 
@@ -24,7 +24,7 @@ func main() {
 		Title:   "GIT-BUG",
 		Section: "1",
 		Date:    &date,
-		Source:  "Generated from git-bug's source code",
+		Source:  "Generated from git-ticket's source code",
 	}
 
 	fmt.Println("Generating manpage ...")

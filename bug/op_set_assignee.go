@@ -3,9 +3,9 @@ package bug
 import (
 	"encoding/json"
 
-	"github.com/MichaelMure/git-bug/entity"
-	"github.com/MichaelMure/git-bug/identity"
-	"github.com/MichaelMure/git-bug/util/timestamp"
+	"github.com/daedaleanai/git-ticket/entity"
+	"github.com/daedaleanai/git-ticket/identity"
+	"github.com/daedaleanai/git-ticket/util/timestamp"
 )
 
 // SetAssigneeOperation will change the Assignee of a bug

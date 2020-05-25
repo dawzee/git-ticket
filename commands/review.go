@@ -3,10 +3,10 @@ package commands
 import (
 	"fmt"
 
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/commands/select"
-	"github.com/MichaelMure/git-bug/input"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/commands/select"
+	"github.com/daedaleanai/git-ticket/input"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 )

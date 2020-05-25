@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/MichaelMure/git-bug/bug"
-	"github.com/MichaelMure/git-bug/entity"
-	"github.com/MichaelMure/git-bug/util/git"
+	"github.com/daedaleanai/git-ticket/bug"
+	"github.com/daedaleanai/git-ticket/entity"
+	"github.com/daedaleanai/git-ticket/util/git"
 )
 
 var ErrNoMatchingOp = fmt.Errorf("no matching operation found")

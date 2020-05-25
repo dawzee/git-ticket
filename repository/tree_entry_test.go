@@ -3,7 +3,7 @@ package repository
 import (
 	"testing"
 
-	"github.com/MichaelMure/git-bug/util/git"
+	"github.com/daedaleanai/git-ticket/util/git"
 )
 
 func TestTreeEntryFormat(t *testing.T) {

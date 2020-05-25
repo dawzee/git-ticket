@@ -7,7 +7,7 @@
 package main
 
 import (
-	"github.com/MichaelMure/git-bug/commands"
+	"github.com/daedaleanai/git-ticket/commands"
 
 	// minimal go version is 1.11
 	_ "github.com/theckman/goconstraint/go1.11/gte"

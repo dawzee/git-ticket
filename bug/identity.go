@@ -1,7 +1,7 @@
 package bug
 
 import (
-	"github.com/MichaelMure/git-bug/identity"
+	"github.com/daedaleanai/git-ticket/identity"
 )
 
 // EnsureIdentities walk the graph of operations and make sure that all Identity

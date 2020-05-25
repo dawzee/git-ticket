@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MichaelMure/git-bug/util/colors"
+	"github.com/daedaleanai/git-ticket/util/colors"
 )
 
 type ChecklistState int

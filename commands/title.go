@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/commands/select"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/commands/select"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +31,7 @@ func runTitle(cmd *cobra.Command, args []string) error {
 
 var titleCmd = &cobra.Command{
 	Use:     "title [<id>]",
-	Short:   "Display or change a title of a bug.",
+	Short:   "Display or change a title of a ticket.",
 	PreRunE: loadRepo,
 	RunE:    runTitle,
 }

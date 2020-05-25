@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/MichaelMure/git-bug/bug"
-	"github.com/MichaelMure/git-bug/cache"
-	_select "github.com/MichaelMure/git-bug/commands/select"
-	"github.com/MichaelMure/git-bug/util/colors"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/bug"
+	"github.com/daedaleanai/git-ticket/cache"
+	_select "github.com/daedaleanai/git-ticket/commands/select"
+	"github.com/daedaleanai/git-ticket/util/colors"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
 )
 
@@ -57,7 +57,7 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(snapshot.Comments) == 0 {
-		return errors.New("invalid bug: no comment")
+		return errors.New("invalid ticket: no comment")
 	}
 
 	firstComment := snapshot.Comments[0]
@@ -195,7 +195,7 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 
 var showCmd = &cobra.Command{
 	Use:     "show [<id>]",
-	Short:   "Display the details of a bug.",
+	Short:   "Display the details of a ticket.",
 	PreRunE: loadRepo,
 	RunE:    runShowBug,
 }

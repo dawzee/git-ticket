@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/MichaelMure/git-bug/entity"
+	"github.com/daedaleanai/git-ticket/entity"
 )
 
 func TestBare_Id(t *testing.T) {

@@ -8,12 +8,12 @@ import (
 	"os"
 	"path"
 
-	"github.com/MichaelMure/git-bug/commands"
+	"github.com/daedaleanai/git-ticket/commands"
 )
 
 func main() {
 	cwd, _ := os.Getwd()
-	dir := path.Join(cwd, "misc", "bash_completion", "git-bug")
+	dir := path.Join(cwd, "misc", "bash_completion", "git-ticket")
 
 	fmt.Println("Generating Bash completion file ...")
 

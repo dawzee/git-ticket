@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/commands/select"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/commands/select"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
 )
 
@@ -37,7 +37,7 @@ func runLabelAdd(cmd *cobra.Command, args []string) error {
 
 var labelAddCmd = &cobra.Command{
 	Use:     "add [<id>] <label>[...]",
-	Short:   "Add a label to a bug.",
+	Short:   "Add a label to a ticket.",
 	PreRunE: loadRepoEnsureUser,
 	RunE:    runLabelAdd,
 }

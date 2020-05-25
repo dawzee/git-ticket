@@ -6,7 +6,7 @@ import (
 	"image/color"
 	"strings"
 
-	"github.com/MichaelMure/git-bug/util/text"
+	"github.com/daedaleanai/git-ticket/util/text"
 )
 
 type Label string
