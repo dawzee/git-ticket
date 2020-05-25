@@ -22,12 +22,24 @@ func TestOperationPackSerialize(t *testing.T) {
 	labelChangeOp := NewLabelChangeOperation(rene, time.Now().Unix(), []Label{"added"}, []Label{"removed"})
 	setChecklistOp := NewSetChecklistOp(rene, time.Now().Unix(), Checklist{Label: "123",
 		Title: "123 Checklist",
-		Questions: []ChecklistQuestion{
-			ChecklistQuestion{Question: "1?"},
-			ChecklistQuestion{Question: "2?"},
-			ChecklistQuestion{Question: "3?"},
+		Sections: []ChecklistSection{
+			ChecklistSection{Title: "Section 1",
+				Questions: []ChecklistQuestion{
+					ChecklistQuestion{Question: "1?"},
+					ChecklistQuestion{Question: "2?"},
+					ChecklistQuestion{Question: "3?"},
+				},
+			},
+			ChecklistSection{Title: "Section 2",
+				Questions: []ChecklistQuestion{
+					ChecklistQuestion{Question: "4?"},
+					ChecklistQuestion{Question: "5?"},
+					ChecklistQuestion{Question: "6?"},
+				},
+			},
 		},
 	})
+
 	mickey := identity.NewBare("Mickey Mouse", "mm@disney.com")
 	setAssigneeOp := NewSetAssigneeOp(rene, time.Now().Unix(), mickey)
 

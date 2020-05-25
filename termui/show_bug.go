@@ -646,7 +646,12 @@ func (sb *showBug) comment(g *gocui.Gui, v *gocui.View) error {
 
 func (sb *showBug) review(g *gocui.Gui, v *gocui.View) error {
 
-	ticketChecklists, err := sb.bug.Snapshot().GetChecklists()
+	id, err := sb.cache.GetUserIdentity()
+	if err != nil {
+		return err
+	}
+
+	ticketChecklists, err := sb.bug.Snapshot().GetUserChecklists(id.Id())
 	if err != nil {
 		return err
 	}

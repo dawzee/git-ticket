@@ -16,10 +16,21 @@ func TestOpSetChecklist_SetChecklist(t *testing.T) {
 
 	before, err := SetChecklist(bug1, rene, unix, Checklist{Label: "123",
 		Title: "123 Checklist",
-		Questions: []ChecklistQuestion{
-			ChecklistQuestion{Question: "1?"},
-			ChecklistQuestion{Question: "2?"},
-			ChecklistQuestion{Question: "3?"},
+		Sections: []ChecklistSection{
+			ChecklistSection{Title: "Section 1",
+				Questions: []ChecklistQuestion{
+					ChecklistQuestion{Question: "1?"},
+					ChecklistQuestion{Question: "2?"},
+					ChecklistQuestion{Question: "3?"},
+				},
+			},
+			ChecklistSection{Title: "Section 2",
+				Questions: []ChecklistQuestion{
+					ChecklistQuestion{Question: "4?"},
+					ChecklistQuestion{Question: "5?"},
+					ChecklistQuestion{Question: "6?"},
+				},
+			},
 		},
 	})
 	assert.NoError(t, err)

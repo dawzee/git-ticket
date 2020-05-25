@@ -24,7 +24,12 @@ func runReview(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ticketChecklists, err := b.Snapshot().GetChecklists()
+	id, err := backend.GetUserIdentity()
+	if err != nil {
+		return err
+	}
+
+	ticketChecklists, err := b.Snapshot().GetUserChecklists(id.Id())
 	if err != nil {
 		return err
 	}

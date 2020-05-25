@@ -17,7 +17,7 @@ type Snapshot struct {
 	Title        string
 	Comments     []Comment
 	Labels       []Label
-	Checklists   map[string]Checklist
+	Checklists   map[string]map[entity.Id]ChecklistSnapshot // label and reviewer id
 	Author       identity.Interface
 	Assignee     identity.Interface
 	Actors       []identity.Interface
@@ -144,17 +144,17 @@ func (snap *Snapshot) HasAnyActor(ids ...entity.Id) bool {
 // Sign post method for gqlgen
 func (snap *Snapshot) IsAuthored() {}
 
-// GetChecklists returns a map of checklists associated with this snapshot
-func (snap *Snapshot) GetChecklists() (map[string]Checklist, error) {
+// GetUserChecklists returns a map of checklists associated with this snapshot for the given reviewer id
+func (snap *Snapshot) GetUserChecklists(reviewer entity.Id) (map[string]Checklist, error) {
 	checklists := make(map[string]Checklist)
 
 	// Only checklists named in the labels list are currently valid
 	for _, l := range snap.Labels {
 		lblStr := string(l)
 		if strings.HasPrefix(lblStr, "checklist:") {
-			var present bool
-			checklists[lblStr], present = snap.Checklists[lblStr]
-			if !present {
+			if snapshotChecklist, present := snap.Checklists[lblStr][reviewer]; present {
+				checklists[lblStr] = snapshotChecklist.Checklist
+			} else {
 				checklists[lblStr], present = ChecklistStore[lblStr]
 				if !present {
 					return nil, fmt.Errorf("invalid checklist %s", l)
@@ -163,6 +163,39 @@ func (snap *Snapshot) GetChecklists() (map[string]Checklist, error) {
 		}
 	}
 	return checklists, nil
+}
+
+// GetChecklistCompoundStates returns a map of checklist states mapped to label, associated with this snapshot
+func (snap *Snapshot) GetChecklistCompoundStates() map[string]ChecklistState {
+	states := make(map[string]ChecklistState)
+
+	// Only checklists named in the labels list are currently valid
+	for _, l := range snap.Labels {
+		lblStr := l.String()
+
+		if strings.HasPrefix(lblStr, "checklist:") {
+			// default state is Pending
+			states[lblStr] = Pending
+
+			clMap, present := snap.Checklists[lblStr]
+			if present {
+				// at least one user has edited this checklist
+				for _, cl := range clMap {
+					clState := cl.CompoundState()
+					switch clState {
+					case Failed:
+						// someone failed it, it's failed
+						states[lblStr] = Failed
+						break
+					case Passed:
+						// someone passed it, and no-one failed it yet
+						states[lblStr] = Passed
+					}
+				}
+			}
+		}
+	}
+	return states
 }
 
 // NextStates returns a slice of next possible states for the assigned workflow
