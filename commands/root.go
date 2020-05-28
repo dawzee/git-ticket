@@ -23,9 +23,9 @@ var RootCmd = &cobra.Command{
 	Short: "A ticket tracker embedded in Git.",
 	Long: `git-ticket is a ticket tracker embedded in git.
 
-git-ticket use git objects to store the ticket tracking separated from the files
+git-ticket uses git objects to store the tickets history separate from the main repo
 history. As tickets are regular git objects, they can be pushed and pulled from/to
-the same git remote your are already using to collaborate with other peoples.
+the same git remote you are already using to collaborate with other people.
 
 `,
 
