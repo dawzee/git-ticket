@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/MichaelMure/git-bug/repository"
+	"github.com/daedaleanai/git-ticket/repository"
 )
 
 func TestPushPull(t *testing.T) {

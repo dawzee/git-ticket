@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/input"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/input"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
 )
 
@@ -56,7 +56,7 @@ func runAddBug(cmd *cobra.Command, args []string) error {
 
 var addCmd = &cobra.Command{
 	Use:     "add",
-	Short:   "Create a new bug.",
+	Short:   "Create a new ticket.",
 	PreRunE: loadRepoEnsureUser,
 	RunE:    runAddBug,
 }

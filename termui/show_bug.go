@@ -8,10 +8,10 @@ import (
 	"github.com/MichaelMure/go-term-text"
 	"github.com/awesome-gocui/gocui"
 
-	"github.com/MichaelMure/git-bug/bug"
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/entity"
-	"github.com/MichaelMure/git-bug/util/colors"
+	"github.com/daedaleanai/git-ticket/bug"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/entity"
+	"github.com/daedaleanai/git-ticket/util/colors"
 )
 
 const showBugView = "showBugView"

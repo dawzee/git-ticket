@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +39,7 @@ func runPush(cmd *cobra.Command, args []string) error {
 // showCmd defines the "push" subcommand.
 var pushCmd = &cobra.Command{
 	Use:     "push [<remote>]",
-	Short:   "Push bugs update to a git remote.",
+	Short:   "Push tickets update to a git remote.",
 	PreRunE: loadRepo,
 	RunE:    runPush,
 }

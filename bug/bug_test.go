@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelMure/git-bug/identity"
-	"github.com/MichaelMure/git-bug/repository"
+	"github.com/daedaleanai/git-ticket/identity"
+	"github.com/daedaleanai/git-ticket/repository"
 	"github.com/stretchr/testify/assert"
 )
 

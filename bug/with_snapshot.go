@@ -1,6 +1,6 @@
 package bug
 
-import "github.com/MichaelMure/git-bug/repository"
+import "github.com/daedaleanai/git-ticket/repository"
 
 var _ Interface = &WithSnapshot{}
 

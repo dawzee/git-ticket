@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/MichaelMure/git-bug/entity"
-	"github.com/MichaelMure/git-bug/repository"
-	"github.com/MichaelMure/git-bug/util/lamport"
-	"github.com/MichaelMure/git-bug/util/text"
-	"github.com/MichaelMure/git-bug/util/timestamp"
+	"github.com/daedaleanai/git-ticket/entity"
+	"github.com/daedaleanai/git-ticket/repository"
+	"github.com/daedaleanai/git-ticket/util/lamport"
+	"github.com/daedaleanai/git-ticket/util/text"
+	"github.com/daedaleanai/git-ticket/util/timestamp"
 )
 
 var _ Interface = &Bare{}

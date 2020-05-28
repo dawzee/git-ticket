@@ -1,6 +1,6 @@
 # Internal architecture
 
-This documentation only provide a bird-eye view of git-bug's internals. For more details, you should read the other documentations and the various comment/documentations scattered in the codebase.
+This documentation only provide a bird-eye view of git-ticket's internals. For more details, you should read the other documentations and the various comment/documentations scattered in the codebase.
 
 ## Overview 
 
@@ -26,7 +26,7 @@ This documentation only provide a bird-eye view of git-bug's internals. For more
         '----------------------------------------------------------'
 ```
 
-Here is the internal architecture of git-bug. As you can see, it's a layered architecture.
+Here is the internal architecture of git-ticket. As you can see, it's a layered architecture.
 
 As a general rule of thumbs, each layer use the directly underlying layer to access and interact with the data. As an example, the `commands` package will not directly use the `bug` or `repository` package. It will request the data from the `cache` layer and go from there. Of course, the `commands` package will ultimately use types defined in the lower level package like `Bug`, but retrieving and changing the data has to go through the `cache` layer to ensure that bugs are properly deduplicated in memory.
 
@@ -69,7 +69,7 @@ This cache main function is to provide some guarantee and features for the upper
 3. The cache guarantee that a single instance of a Bug is loaded at once, avoiding loss of data that we could have with multiple copies in the same process.
 4. The same way, the cache maintain in memory a single copy of the loaded identities.
 
-The cache also protect the on-disk data by locking the git repository for its own usage, by writing a lock file. Of course, normal git operations are not affected, only git-bug related one.
+The cache also protect the on-disk data by locking the git repository for its own usage, by writing a lock file. Of course, normal git operations are not affected, only git-ticket related one.
 
 In particular, this package contains:
 - `BugCache`, wrapping a `Bug` in a cached version in memory, maintaining efficiently a `Snapshot` and providing a simplified API
@@ -94,9 +94,9 @@ The package `graphql` implement the GraphQL API, mapping the data model and prov
 
 The package `webui` hold the web based user interface, implemented in both go and javascript.
 
-The javascript code is compiled and packaged inside the go binary, allowing for a single file distribution of git-bug.
+The javascript code is compiled and packaged inside the go binary, allowing for a single file distribution of git-ticket.
 
-When the webUI is started from the CLI command, a localhost HTTP server is started to serve the webUI resources (html, js, css), as well as the GraphQL API. When the webUI is loaded in the browser, it interact with the git-bug process through the GraphQL API to load and edit bugs.
+When the webUI is started from the CLI command, a localhost HTTP server is started to serve the webUI resources (html, js, css), as well as the GraphQL API. When the webUI is loaded in the browser, it interact with the git-ticket process through the GraphQL API to load and edit bugs.
 
 ## bridge
 

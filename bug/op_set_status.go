@@ -5,9 +5,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/MichaelMure/git-bug/entity"
-	"github.com/MichaelMure/git-bug/identity"
-	"github.com/MichaelMure/git-bug/util/timestamp"
+	"github.com/daedaleanai/git-ticket/entity"
+	"github.com/daedaleanai/git-ticket/identity"
+	"github.com/daedaleanai/git-ticket/util/timestamp"
 )
 
 // SetStatusOperation will change the status of a bug

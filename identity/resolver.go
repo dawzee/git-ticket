@@ -1,8 +1,8 @@
 package identity
 
 import (
-	"github.com/MichaelMure/git-bug/entity"
-	"github.com/MichaelMure/git-bug/repository"
+	"github.com/daedaleanai/git-ticket/entity"
+	"github.com/daedaleanai/git-ticket/repository"
 )
 
 // Resolver define the interface of an Identity resolver, able to load

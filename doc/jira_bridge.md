@@ -4,7 +4,7 @@
 
 ### One bridge = one project
 
-There aren't any huge technical barriers requiring this, but since git-bug lacks
+There aren't any huge technical barriers requiring this, but since git-ticket lacks
 a notion of "project" there is no way to know which project to export new bugs
 to as issues. Also, JIRA projects are first-class immutable metadata and so we
 *must* get it right on export. Therefore the bridge is configured with the `Key`
@@ -13,7 +13,7 @@ for the project it is assigned to. It will only import bugs from that project.
 ### JIRA fields
 
 The bridge currently does nothing to import any of the JIRA fields that don't
-have `git-bug` equivalents ("Assignee", "sprint", "story points", etc).
+have `git-ticket` equivalents ("Assignee", "sprint", "story points", etc).
 Hopefully the bridge will be able to enable synchronization of these soon.
 
 ### Credentials
@@ -52,12 +52,12 @@ syntax.
 
 For longer term goals, see the section below on workflow validation
 
-### Assign git-bug id to field during issue creation
+### Assign git-ticket id to field during issue creation
 
 JIRA allows for the inclusion of custom "fields" in all of their issues. The
 JIRA bridge will store the JIRA issue "id" for any bugs which are synchronized
-to JIRA, but it can also assign to a custom JIRA `field` the `git-bug` id. This
-way the `git-bug` id can be displayed in the JIRA web interface and certain
+to JIRA, but it can also assign to a custom JIRA `field` the `git-ticket` id. This
+way the `git-ticket` id can be displayed in the JIRA web interface and certain
 integration activities become easier.
 
 See the configuration section below on how to specify the custom field where the
@@ -80,10 +80,10 @@ aspirations are described in the section below on "Workflow Validation".
 Currently the JIRA bridge isn't very smart about transitions though, so you'll
 need to tell it what you want it to do when importing and exporting a state
 change (i.e. to "close" or "open" a bug). Currently the bridge accepts
-configuration options which map the two `git-bug` statuses ("open", "closed") to
-two JIRA statuses. On import, the JIRA status is mapped to a `git-bug` status
-(if a mapping exists) and the `git-bug` status is assigned. On export, the
-`git-bug` status is mapped to a JIRA status and if a mapping exists the bridge
+configuration options which map the two `git-ticket` statuses ("open", "closed") to
+two JIRA statuses. On import, the JIRA status is mapped to a `git-ticket` status
+(if a mapping exists) and the `git-ticket` status is assigned. On export, the
+`git-ticket` status is mapped to a JIRA status and if a mapping exists the bridge
 will query the list of available transitions for the issue. If a transition
 exists to the desired state the bridge will attempt to execute the transition.
 It does not currently support assigning any fields during the transition so if
@@ -106,23 +106,23 @@ when an issue is closed the `"status"` might change to `"closed"` and the
 `"resolution"` might change to `"fixed'`.
 
 When a changelog entry is imported by the JIRA bridge, each individual field
-that was changed is treated as a separate `git-bug` operation. In other words a
-single JIRA change event might create more than one `git-bug` operation.
+that was changed is treated as a separate `git-ticket` operation. In other words a
+single JIRA change event might create more than one `git-ticket` operation.
 
-However, when a `git-bug` operation is exported to JIRA it will only create a
+However, when a `git-ticket` operation is exported to JIRA it will only create a
 single changelog entry. Furthermore, when we modify JIRA issues over the REST
 API JIRA does not provide any information to associate that modification event
 with the changelog. We must, therefore, herustically match changelog entries
 against operations that we performed in order to not import them as duplicate
 events. In order to assist in this matching proceess, the bridge will record the
 JIRA server time of the response to the `POST` (as reported by the `"Date"`
-response header). During import, we keep an iterator to the list of `git-bug`
+response header). During import, we keep an iterator to the list of `git-ticket`
 operations for the bug mapped to the Jira issue. As we walk the JIRA changelog,
 we keep the iterator pointing to the first operation with an annotation which is
 *not before* that changelog entry. If the changelog entry is the result of an
-exported `git-bug` operation, then this must be that operation. We then scan
+exported `git-ticket` operation, then this must be that operation. We then scan
 through the list of changeitems (changed fields) in the changelog entry, and if
-we can match a changed field to the candidate `git-bug` operation then we have
+we can match a changed field to the candidate `git-ticket` operation then we have
 identified the match.
 
 ### Unlogged Changes
@@ -134,7 +134,7 @@ then we treat that as a new comment edition. If we do not already have the
 comment imported, then we import an empty comment followed by a comment edition.
 
 Because comment editions are not uniquely identified in JIRA we identify them
-in `git-bug` by concatinating the JIRA issue `id` with the `updated` time of
+in `git-ticket` by concatinating the JIRA issue `id` with the `updated` time of
 the edition.
 
 ### Workflow Validation (future)
@@ -144,7 +144,7 @@ specifiations from the JIRA server. This includes the required metadata for
 issue creation, and the status state graph, and the set of required metadata for
 status transition.
 
-When an existing `git-bug` is initially marked for export, the bridge will hook
+When an existing `git-ticket` is initially marked for export, the bridge will hook
 in and validate the bug state against the required metadata. Then it will prompt
 for any missing metadata using a set of UI components appropriate for the field
 schema as reported by JIRA. If the user cancels then the bug will not be marked
@@ -194,9 +194,9 @@ Note that the content of this value is merged verbatim to the JSON object that
 is `POST`ed to the JIRA rest API, so you can use arbitrary valid JSON.
 
 
-### Assign git-bug id to field
+### Assign git-ticket id to field
 
-If you want the bridge to fill a JIRA field with the `git-bug` id when exporting
+If you want the bridge to fill a JIRA field with the `git-ticket` id when exporting
 issues, then provide the name of the field:
 
 ```
@@ -205,15 +205,15 @@ create-issue-gitbug-id = "customfield_5678"
 
 ### Status Map
 
-You can specify the mapping between `git-bug` status and JIRA status id's using
+You can specify the mapping between `git-ticket` status and JIRA status id's using
 the following:
 ```
 bug-id-map = {\"open\": \"1\", \"closed\": \"6\"}
 ```
 
-The format of the map is `<git-bug-status-name>: <jira-status-id>`. In general
-your jira instance will have more statuses than `git-bug` will and you may map
-more than one jira-status to a git-bug status. You can do this with
+The format of the map is `<git-ticket-status-name>: <jira-status-id>`. In general
+your jira instance will have more statuses than `git-ticket` will and you may map
+more than one jira-status to a git-ticket status. You can do this with
 `bug-id-revmap`:
 ```
 bug-id-revmap = {\"10109\": \"open\", \"10006\": \"open\", \"10814\": \"open\"}
@@ -231,7 +231,7 @@ requires doublequotes to be escaped (as in the examples above).
 
 Here is an example configuration with all optional fields set
 ```
-[git-bug "bridge.default"]
+[git-ticket "bridge.default"]
 	project = PROJ
 	credentials-file = .git/jira-credentials.json
 	target = jira
@@ -244,7 +244,7 @@ Here is an example configuration with all optional fields set
 
 ## To-Do list
 
-* [0cf5c71] Assign git-bug to jira field on import
+* [0cf5c71] Assign git-ticket to jira field on import
 * [8acce9c] Download and cache workflow representation
 * [95e3d45] Implement workflow gui
 * [c70e22a] Implement additional query filters for import

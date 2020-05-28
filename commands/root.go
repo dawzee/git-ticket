@@ -7,12 +7,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MichaelMure/git-bug/bug"
-	"github.com/MichaelMure/git-bug/identity"
-	"github.com/MichaelMure/git-bug/repository"
+	"github.com/daedaleanai/git-ticket/bug"
+	"github.com/daedaleanai/git-ticket/identity"
+	"github.com/daedaleanai/git-ticket/repository"
 )
 
-const rootCommandName = "git-bug"
+const rootCommandName = "git-ticket"
 
 // package scoped var to hold the repo after the PreRun execution
 var repo repository.ClockedRepo
@@ -20,12 +20,12 @@ var repo repository.ClockedRepo
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   rootCommandName,
-	Short: "A bug tracker embedded in Git.",
-	Long: `git-bug is a bug tracker embedded in git.
+	Short: "A ticket tracker embedded in Git.",
+	Long: `git-ticket is a ticket tracker embedded in git.
 
-git-bug use git objects to store the bug tracking separated from the files
-history. As bugs are regular git objects, they can be pushed and pulled from/to
-the same git remote your are already using to collaborate with other peoples.
+git-ticket uses git objects to store the tickets history separate from the main repo
+history. As tickets are regular git objects, they can be pushed and pulled from/to
+the same git remote you are already using to collaborate with other people.
 
 `,
 
@@ -41,11 +41,11 @@ the same git remote your are already using to collaborate with other peoples.
 	SilenceUsage:      true,
 	DisableAutoGenTag: true,
 
-	// Custom bash code to connect the git completion for "git bug" to the
-	// git-bug completion for "git-bug"
+	// Custom bash code to connect the git completion for "git ticket" to the
+	// git-ticket completion for "git-ticket"
 	BashCompletionFunction: `
-_git_bug() {
-    __start_git-bug "$@"
+_git_ticket() {
+    __start_git-ticket "$@"
 }
 `,
 }

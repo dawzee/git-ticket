@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/MichaelMure/git-bug/repository"
-	"github.com/MichaelMure/git-bug/util/git"
-	"github.com/MichaelMure/git-bug/util/lamport"
-	"github.com/MichaelMure/git-bug/util/text"
+	"github.com/daedaleanai/git-ticket/repository"
+	"github.com/daedaleanai/git-ticket/util/git"
+	"github.com/daedaleanai/git-ticket/util/lamport"
+	"github.com/daedaleanai/git-ticket/util/text"
 	"github.com/pkg/errors"
 )
 

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelMure/git-bug/identity"
-	"github.com/MichaelMure/git-bug/util/git"
+	"github.com/daedaleanai/git-ticket/identity"
+	"github.com/daedaleanai/git-ticket/util/git"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

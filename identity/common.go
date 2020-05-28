@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/MichaelMure/git-bug/entity"
+	"github.com/daedaleanai/git-ticket/entity"
 )
 
 var ErrIdentityNotExist = errors.New("identity doesn't exist")

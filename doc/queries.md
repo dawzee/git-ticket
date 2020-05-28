@@ -86,7 +86,7 @@ You can filter bugs based on the absence of something.
 
 You can sort results by adding a `sort:` qualifier to your query. “Descending” means most recent time or largest ID first, whereas “Ascending” means oldest time or smallest ID first.
 
-Note: to deal with differently-set clocks on distributed computers, `git-bug` uses a logical clock internally rather than timestamps to order bug changes over time. That means that the timestamps recorded might not match the returned ordering. More on that in [the documentation](model.md#you-cant-rely-on-the-time-provided-by-other-people-their-clock-might-by-off-for-anything-other-than-just-display)
+Note: to deal with differently-set clocks on distributed computers, `git-ticket` uses a logical clock internally rather than timestamps to order bug changes over time. That means that the timestamps recorded might not match the returned ordering. More on that in [the documentation](model.md#you-cant-rely-on-the-time-provided-by-other-people-their-clock-might-by-off-for-anything-other-than-just-display)
 
 ### Sort by Id
 

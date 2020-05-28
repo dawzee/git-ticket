@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MichaelMure/git-bug/bug"
-	"github.com/MichaelMure/git-bug/identity"
-	"github.com/MichaelMure/git-bug/repository"
+	"github.com/daedaleanai/git-ticket/bug"
+	"github.com/daedaleanai/git-ticket/identity"
+	"github.com/daedaleanai/git-ticket/repository"
 	"github.com/icrowley/fake"
 )
 

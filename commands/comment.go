@@ -6,11 +6,11 @@ import (
 	"github.com/MichaelMure/go-term-text"
 	"github.com/spf13/cobra"
 
-	"github.com/MichaelMure/git-bug/bug"
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/commands/select"
-	"github.com/MichaelMure/git-bug/util/colors"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/bug"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/commands/select"
+	"github.com/daedaleanai/git-ticket/util/colors"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 )
 
 func runComment(cmd *cobra.Command, args []string) error {
@@ -48,7 +48,7 @@ func commentsTextOutput(comments []bug.Comment) {
 
 var commentCmd = &cobra.Command{
 	Use:     "comment [<id>]",
-	Short:   "Display or add comments to a bug.",
+	Short:   "Display or add comments to a ticket.",
 	PreRunE: loadRepo,
 	RunE:    runComment,
 }

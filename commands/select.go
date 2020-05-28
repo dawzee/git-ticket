@@ -6,14 +6,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/commands/select"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/commands/select"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 )
 
 func runSelect(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.New("You must provide a bug id")
+		return errors.New("You must provide a ticket id")
 	}
 
 	backend, err := cache.NewRepoCache(repo)
@@ -35,26 +35,26 @@ func runSelect(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("selected bug %s: %s\n", b.Id().Human(), b.Snapshot().Title)
+	fmt.Printf("selected ticket %s: %s\n", b.Id().Human(), b.Snapshot().Title)
 
 	return nil
 }
 
 var selectCmd = &cobra.Command{
 	Use:   "select <id>",
-	Short: "Select a bug for implicit use in future commands.",
-	Example: `git bug select 2f15
-git bug comment
-git bug status
+	Short: "Select a ticket for implicit use in future commands.",
+	Example: `git ticket select 2f15
+git ticket comment
+git ticket status
 `,
-	Long: `Select a bug for implicit use in future commands.
+	Long: `Select a ticket for implicit use in future commands.
 
-This command allows you to omit any bug <id> argument, for example:
-  git bug show
+This command allows you to omit any ticket <id> argument, for example:
+  git ticket show
 instead of
-  git bug show 2f153ca
+  git ticket show 2f153ca
 
-The complementary command is "git bug deselect" performing the opposite operation.
+The complementary command is "git ticket deselect" performing the opposite operation.
 `,
 	PreRunE: loadRepo,
 	RunE:    runSelect,

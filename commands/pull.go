@@ -6,9 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/entity"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/entity"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 )
 
 func runPull(cmd *cobra.Command, args []string) error {
@@ -55,7 +55,7 @@ func runPull(cmd *cobra.Command, args []string) error {
 // showCmd defines the "push" subcommand.
 var pullCmd = &cobra.Command{
 	Use:     "pull [<remote>]",
-	Short:   "Pull bugs update from a git remote.",
+	Short:   "Pull tickets update from a git remote.",
 	PreRunE: loadRepo,
 	RunE:    runPull,
 }

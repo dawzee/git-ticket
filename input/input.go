@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/MichaelMure/git-bug/bug"
-	"github.com/MichaelMure/git-bug/repository"
+	"github.com/daedaleanai/git-ticket/bug"
+	"github.com/daedaleanai/git-ticket/repository"
 	"github.com/pkg/errors"
 )
 

@@ -9,10 +9,10 @@ import (
 
 	errors2 "github.com/go-errors/errors"
 
-	"github.com/MichaelMure/git-bug/bug"
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/entity"
-	"github.com/MichaelMure/git-bug/input"
+	"github.com/daedaleanai/git-ticket/bug"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/entity"
+	"github.com/daedaleanai/git-ticket/input"
 )
 
 var errTerminateMainloop = errors.New("terminate gocui mainloop")

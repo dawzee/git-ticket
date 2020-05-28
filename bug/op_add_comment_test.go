@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/MichaelMure/git-bug/identity"
+	"github.com/daedaleanai/git-ticket/identity"
 )
 
 func TestAddCommentSerialize(t *testing.T) {

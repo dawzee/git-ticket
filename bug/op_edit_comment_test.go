@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MichaelMure/git-bug/identity"
+	"github.com/daedaleanai/git-ticket/identity"
 )
 
 func TestEdit(t *testing.T) {

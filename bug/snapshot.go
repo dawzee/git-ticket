@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MichaelMure/git-bug/entity"
-	"github.com/MichaelMure/git-bug/identity"
+	"github.com/daedaleanai/git-ticket/entity"
+	"github.com/daedaleanai/git-ticket/identity"
 )
 
 // Snapshot is a compiled form of the Bug data structure used for storage and merge

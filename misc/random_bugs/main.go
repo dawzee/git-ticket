@@ -5,8 +5,8 @@ package main
 import (
 	"os"
 
-	rb "github.com/MichaelMure/git-bug/misc/random_bugs"
-	"github.com/MichaelMure/git-bug/repository"
+	rb "github.com/daedaleanai/git-ticket/misc/random_bugs"
+	"github.com/daedaleanai/git-ticket/repository"
 )
 
 // This program will randomly generate a collection of bugs in the repository

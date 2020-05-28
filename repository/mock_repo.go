@@ -4,8 +4,8 @@ import (
 	"crypto/sha1"
 	"fmt"
 
-	"github.com/MichaelMure/git-bug/util/git"
-	"github.com/MichaelMure/git-bug/util/lamport"
+	"github.com/daedaleanai/git-ticket/util/git"
+	"github.com/daedaleanai/git-ticket/util/lamport"
 )
 
 var _ ClockedRepo = &mockRepoForTest{}
@@ -72,7 +72,7 @@ func (r *mockRepoForTest) GetCoreEditor() (string, error) {
 // GetRemotes returns the configured remotes repositories.
 func (r *mockRepoForTest) GetRemotes() (map[string]string, error) {
 	return map[string]string{
-		"origin": "git://github.com/MichaelMure/git-bug",
+		"origin": "git://github.com/daedaleanai/git-ticket",
 	}, nil
 }
 

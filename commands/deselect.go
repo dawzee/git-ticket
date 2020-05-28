@@ -1,9 +1,9 @@
 package commands
 
 import (
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/commands/select"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/commands/select"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
 )
 
@@ -25,11 +25,11 @@ func runDeselect(cmd *cobra.Command, args []string) error {
 
 var deselectCmd = &cobra.Command{
 	Use:   "deselect",
-	Short: "Clear the implicitly selected bug.",
-	Example: `git bug select 2f15
-git bug comment
-git bug status
-git bug deselect
+	Short: "Clear the implicitly selected ticket.",
+	Example: `git ticket select 2f15
+git ticket comment
+git ticket status
+git ticket deselect
 `,
 	PreRunE: loadRepo,
 	RunE:    runDeselect,

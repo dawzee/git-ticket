@@ -9,7 +9,7 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/MichaelMure/git-bug/commands"
+	"github.com/daedaleanai/git-ticket/commands"
 	"github.com/spf13/cobra/doc"
 )
 

@@ -7,9 +7,9 @@ import (
 	text "github.com/MichaelMure/go-term-text"
 	"github.com/spf13/cobra"
 
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/util/colors"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/util/colors"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 )
 
 var (
@@ -178,15 +178,15 @@ func lsQueryFromFlags() (*cache.Query, error) {
 
 var lsCmd = &cobra.Command{
 	Use:   "ls [<query>]",
-	Short: "List bugs.",
-	Long: `Display a summary of each bugs.
+	Short: "List tickets.",
+	Long: `Display a summary of each ticket.
 
 You can pass an additional query to filter and order the list. This query can be expressed either with a simple query language or with flags.`,
-	Example: `List open bugs sorted by last edition with a query:
-git bug ls status:open sort:edit-desc
+	Example: `List open tickets sorted by last edition with a query:
+git ticket ls status:open sort:edit-desc
 
-List closed bugs sorted by creation with flags:
-git bug ls --status closed --by creation
+List closed tickets sorted by creation with flags:
+git ticket ls --status closed --by creation
 `,
 	PreRunE: loadRepo,
 	RunE:    runLsBug,

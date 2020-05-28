@@ -1,7 +1,7 @@
 package cache
 
 import (
-	"github.com/MichaelMure/git-bug/identity"
+	"github.com/daedaleanai/git-ticket/identity"
 )
 
 // IdentityCache is a wrapper around an Identity for caching.

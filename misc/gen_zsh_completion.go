@@ -8,12 +8,12 @@ import (
 	"os"
 	"path"
 
-	"github.com/MichaelMure/git-bug/commands"
+	"github.com/daedaleanai/git-ticket/commands"
 )
 
 func main() {
 	cwd, _ := os.Getwd()
-	filepath := path.Join(cwd, "misc", "zsh_completion", "git-bug")
+	filepath := path.Join(cwd, "misc", "zsh_completion", "git-ticket")
 
 	fmt.Println("Generating ZSH completion file ...")
 
