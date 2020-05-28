@@ -232,6 +232,28 @@ func (c *BugCache) SetChecklistRaw(author *IdentityCache, unixTime int64, cl bug
 	return op, c.notifyUpdated()
 }
 
+func (c *BugCache) SetReview(review *bug.ReviewInfo) (*bug.SetReviewOperation, error) {
+	author, err := c.repoCache.GetUserIdentity()
+	if err != nil {
+		return nil, err
+	}
+
+	return c.SetReviewRaw(author, time.Now().Unix(), nil, review)
+}
+
+func (c *BugCache) SetReviewRaw(author *IdentityCache, unixTime int64, metadata map[string]string, review *bug.ReviewInfo) (*bug.SetReviewOperation, error) {
+	op, err := bug.SetReview(c.bug, author.Identity, unixTime, review)
+	if err != nil {
+		return nil, err
+	}
+
+	for key, value := range metadata {
+		op.SetMetadata(key, value)
+	}
+
+	return op, c.notifyUpdated()
+}
+
 func (c *BugCache) SetStatus(status bug.Status) (*bug.SetStatusOperation, error) {
 	author, err := c.repoCache.GetUserIdentity()
 	if err != nil {

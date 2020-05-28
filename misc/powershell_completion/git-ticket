@@ -114,14 +114,18 @@ Register-ArgumentCompleter -Native -CommandName 'git-ticket' -ScriptBlock {
             break
         }
         'git-ticket;review' {
+            [CompletionResult]::new('fetch', 'fetch', [CompletionResultType]::ParameterValue, 'Fetch review data for a ticket.')
+            break
+        }
+        'git-ticket;review;fetch' {
             break
         }
         'git-ticket;select' {
             break
         }
         'git-ticket;show' {
-            [CompletionResult]::new('-f', 'f', [CompletionResultType]::ParameterName, 'Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,humanId,id,labels,shortId,status,title,workflow,actors,participants]')
-            [CompletionResult]::new('--field', 'field', [CompletionResultType]::ParameterName, 'Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,humanId,id,labels,shortId,status,title,workflow,actors,participants]')
+            [CompletionResult]::new('-f', 'f', [CompletionResultType]::ParameterName, 'Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,humanId,id,labels,reviews,shortId,status,title,workflow,actors,participants]')
+            [CompletionResult]::new('--field', 'field', [CompletionResultType]::ParameterName, 'Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,humanId,id,labels,reviews,shortId,status,title,workflow,actors,participants]')
             break
         }
         'git-ticket;status' {

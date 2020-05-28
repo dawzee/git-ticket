@@ -604,6 +604,26 @@ _git-ticket_push()
     noun_aliases=()
 }
 
+_git-ticket_review_fetch()
+{
+    last_command="git-ticket_review_fetch"
+
+    command_aliases=()
+
+    commands=()
+
+    flags=()
+    two_word_flags=()
+    local_nonpersistent_flags=()
+    flags_with_completion=()
+    flags_completion=()
+
+
+    must_have_one_flag=()
+    must_have_one_noun=()
+    noun_aliases=()
+}
+
 _git-ticket_review()
 {
     last_command="git-ticket_review"
@@ -611,6 +631,7 @@ _git-ticket_review()
     command_aliases=()
 
     commands=()
+    commands+=("fetch")
 
     flags=()
     two_word_flags=()
