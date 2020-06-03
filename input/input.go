@@ -23,6 +23,7 @@ import (
 const messageFilename = "BUG_MESSAGE_EDITMSG"
 const keyFilename = "KEY_EDITMSG"
 const checklistFilename = "CHECKLIST_EDITMSG"
+const configFilename = "CONFIG_EDITMSG"
 
 // ErrEmptyMessage is returned when the required message has not been entered
 var ErrEmptyMessage = errors.New("empty message")
@@ -127,6 +128,23 @@ const identityVersionKeyTemplate = `
 // the key.
 func IdentityVersionKeyEditorInput(repo repository.RepoCommon) (string, error) {
 	raw, err := launchEditorWithTemplate(repo, keyFilename, identityVersionKeyTemplate)
+
+	if err != nil {
+		return "", err
+	}
+
+	return removeCommentedLines(raw), nil
+}
+
+const configTemplate = `
+# Please enter your configuration data. Lines starting with '#' will be ignored,
+# and an empty message aborts the operation.
+`
+
+// ConfigEditorInput will open the default editor in the terminal
+// with a template for the user to fill.
+func ConfigEditorInput(repo repository.RepoCommon) (string, error) {
+	raw, err := launchEditorWithTemplate(repo, configFilename, configTemplate)
 
 	if err != nil {
 		return "", err
