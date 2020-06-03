@@ -29,13 +29,13 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to get config data from the editor", err)
+		return fmt.Errorf("failed to get config data from the editor: %s", err)
 	}
 
 	// Validate json
 	var tmp map[string]interface{}
 	if err := yaml.Unmarshal([]byte(configData), &tmp); err != nil {
-		return fmt.Errorf("the config data you specified is not properly formated: %s", err)
+		return fmt.Errorf("the config data you specified is not properly formatted: %s", err)
 	}
 
 	return backend.SetConfig(args[0], []byte(configData))
