@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MichaelMure/git-bug/cache"
-	"github.com/MichaelMure/git-bug/util/interrupt"
+	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/util/interrupt"
 )
 
 func runConfig(cmd *cobra.Command, args []string) error {
