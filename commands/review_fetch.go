@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/daedaleanai/git-ticket/bug"
@@ -11,16 +12,16 @@ import (
 )
 
 func runReviewFetch(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("no DiffID supplied")
-	}
-
 	backend, err := cache.NewRepoCache(repo)
 	if err != nil {
 		return err
 	}
 	defer backend.Close()
 	interrupt.RegisterCleaner(backend.Close)
+
+	if len(args) < 1 {
+		return errors.New("no DiffID supplied")
+	}
 
 	diffId := args[0]
 	args = args[1:]
@@ -38,7 +39,7 @@ func runReviewFetch(cmd *cobra.Command, args []string) error {
 	https://p.daedalean.ai/settings/user/<YOUR_USERNAME_HERE>/page/apitokens/
 click on <Generate API Token>, and then paste the token into this command
 	git config --global --replace-all daedalean.taskmgr-api-token <PASTE_TOKEN_HERE>`
-			return fmt.Errorf(msg)
+			return errors.New(msg)
 		}
 	}
 
@@ -54,7 +55,7 @@ click on <Generate API Token>, and then paste the token into this command
 		return err
 	}
 
-	if len(review.Comments) == 0 && len(review.Status) == 0 {
+	if len(review.Comments) == 0 && len(review.Statuses) == 0 {
 		fmt.Printf("No updates to save for %s, aborting\n", diffId)
 		return nil
 	}
@@ -68,8 +69,17 @@ click on <Generate API Token>, and then paste the token into this command
 }
 
 var reviewFetchCmd = &cobra.Command{
-	Use:     "fetch <DiffID> [<id>]",
-	Short:   "Fetch review data for a ticket.",
+	Use:   "fetch <DiffID> [<id>]",
+	Short: "Get Differential Revision data from Phabricator and store in a ticket.",
+	Long: `fetch stores Phabricator Differential Revision data in a ticket.
+
+The command takes a Phabricator Differential Revision ID (e.g. D1234) and queries the
+Phabricator server for any associated comments or status changes, any resulting data
+is stored with the selected ticket. Subsequent calls with the same ID will fetch and
+store any updates since the previous call. Multiple Revisions can be stored with a
+ticket by running the command with different IDs.
+
+`,
 	PreRunE: loadRepoEnsureUser,
 	RunE:    runReviewFetch,
 }

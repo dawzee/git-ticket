@@ -28,16 +28,16 @@ func (op *SetReviewOperation) Id() entity.Id {
 }
 
 func (op *SetReviewOperation) Apply(snapshot *Snapshot) {
-	// If there is already review data in the snapshot then append the comments
-	// and status data, else just set it
-	if r, present := snapshot.Reviews[op.Review.Id]; present {
-		r.Comments = append(r.Comments, op.Review.Comments...)
-		r.Status = append(r.Status, op.Review.Status...)
-		r.LastTransaction = op.Review.LastTransaction
-		snapshot.Reviews[op.Review.Id] = r
-	} else {
-		snapshot.Reviews[op.Review.Id] = op.Review
-	}
+
+	// Update the review data, if it's not already there an empty ReviewInfo
+	// struct will be returned
+	r, _ := snapshot.Reviews[op.Review.RevisionId]
+	r.RevisionId = op.Review.RevisionId
+	r.LastTransaction = op.Review.LastTransaction
+	r.Comments = append(r.Comments, op.Review.Comments...)
+	r.Statuses = append(r.Statuses, op.Review.Statuses...)
+	snapshot.Reviews[op.Review.RevisionId] = r
+
 	snapshot.addActor(op.Author)
 
 	item := &SetReviewTimelineItem{

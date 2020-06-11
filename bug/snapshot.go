@@ -18,7 +18,7 @@ type Snapshot struct {
 	Comments     []Comment
 	Labels       []Label
 	Checklists   map[string]map[entity.Id]ChecklistSnapshot // label and reviewer id
-	Reviews      map[string]ReviewInfo
+	Reviews      map[string]ReviewInfo                      // Phabricator Differential ID
 	Author       identity.Interface
 	Assignee     identity.Interface
 	Actors       []identity.Interface

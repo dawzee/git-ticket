@@ -148,7 +148,7 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 	// Reviews
 	fmt.Printf("reviews:\n")
 	for _, review := range snapshot.Reviews {
-		fmt.Printf("- %s (%d comments)\n", review.Id, len(review.Comments))
+		fmt.Printf("- %s (%d comments)\n", review.RevisionId, len(review.Comments))
 	}
 
 	// Labels

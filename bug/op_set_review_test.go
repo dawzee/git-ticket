@@ -36,6 +36,7 @@ var testComments = []ReviewComment{
 			Id:        "10001",
 			User:      "USERID2",
 			Timestamp: 1},
+		Diff: 123,
 		Path: "code/under_test.go",
 		Line: 1,
 		Text: "needs work"},
@@ -44,6 +45,7 @@ var testComments = []ReviewComment{
 			Id:        "10002",
 			User:      "USERID2",
 			Timestamp: 2},
+		Diff: 124,
 		Path: "code/under_test.go",
 		Line: 1,
 		Text: "LGTM"},
@@ -55,9 +57,9 @@ func TestOpSetReview_SetReview(t *testing.T) {
 	bug1 := NewBug()
 
 	before, err := SetReview(bug1, rene, unix,
-		&ReviewInfo{Id: "D1234",
+		&ReviewInfo{RevisionId: "D1234",
 			LastTransaction: "12345",
-			Status:          testStatuses,
+			Statuses:        testStatuses,
 			Comments:        testComments,
 		})
 	assert.NoError(t, err)
@@ -83,23 +85,23 @@ func TestOpSetReview_Apply(t *testing.T) {
 	snapshot := NewBug().Compile()
 
 	// create an operation and apply to the snapshot
-	setReviewOp := NewSetReviewOp(rene, unix, &ReviewInfo{Id: "D1234",
+	setReviewOp := NewSetReviewOp(rene, unix, &ReviewInfo{RevisionId: "D1234",
 		LastTransaction: "12345",
-		Status:          []ReviewStatus{testStatuses[0]},
+		Statuses:        []ReviewStatus{testStatuses[0]},
 		Comments:        []ReviewComment{testComments[0]}})
 	setReviewOp.Apply(&snapshot)
 
 	// sumation holds a local copy of what should be in the snapshot
-	sumation := ReviewInfo{Id: "D1234",
+	sumation := ReviewInfo{RevisionId: "D1234",
 		LastTransaction: "12345",
-		Status:          []ReviewStatus{testStatuses[0]},
+		Statuses:        []ReviewStatus{testStatuses[0]},
 		Comments:        []ReviewComment{testComments[0]},
 	}
 
 	assert.Equal(t, sumation, snapshot.Reviews["D1234"])
 
 	// add an extra comment
-	setReviewOp2 := NewSetReviewOp(rene, unix, &ReviewInfo{Id: "D1234",
+	setReviewOp2 := NewSetReviewOp(rene, unix, &ReviewInfo{RevisionId: "D1234",
 		LastTransaction: "12346",
 		Comments:        []ReviewComment{testComments[1]}})
 	setReviewOp2.Apply(&snapshot)
@@ -110,12 +112,12 @@ func TestOpSetReview_Apply(t *testing.T) {
 	assert.Equal(t, sumation, snapshot.Reviews["D1234"])
 
 	// and a couple more status changes
-	setReviewOp3 := NewSetReviewOp(rene, unix, &ReviewInfo{Id: "D1234",
+	setReviewOp3 := NewSetReviewOp(rene, unix, &ReviewInfo{RevisionId: "D1234",
 		LastTransaction: "12347",
-		Status:          testStatuses[1:2]})
+		Statuses:        testStatuses[1:2]})
 	setReviewOp3.Apply(&snapshot)
 
-	sumation.Status = append(sumation.Status, testStatuses[1:2]...)
+	sumation.Statuses = append(sumation.Statuses, testStatuses[1:2]...)
 	sumation.LastTransaction = "12347"
 
 	assert.Equal(t, sumation, snapshot.Reviews["D1234"])

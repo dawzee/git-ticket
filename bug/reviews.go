@@ -22,8 +22,9 @@ type PhabTransaction struct {
 // ReviewComment extends PhabTransaction with comment specific fields
 type ReviewComment struct {
 	PhabTransaction
-	Path string
-	Line int
+	Diff int    // diff id comment was made againt, inline comments only
+	Path string // file path, inline comments only
+	Line int    // line number, inline comments only
 	Text string
 }
 
@@ -35,9 +36,9 @@ type ReviewStatus struct {
 
 // ReviewInfo holds a set of comment and status updates related to a diff
 type ReviewInfo struct {
-	Id              string // e.g. D1234
+	RevisionId      string // e.g. D1234
 	LastTransaction string
-	Status          []ReviewStatus
+	Statuses        []ReviewStatus
 	Comments        []ReviewComment
 }
 
@@ -45,11 +46,11 @@ type ReviewInfo struct {
 func (r ReviewInfo) String() string {
 
 	// The Differential ID
-	output := fmt.Sprintf("%s\n", r.Id)
+	output := fmt.Sprintf("%s\n", r.RevisionId)
 
 	// Create a map of the latest status change made by all users
 	userStatusChange := make(map[string]ReviewStatus)
-	for _, s := range r.Status {
+	for _, s := range r.Statuses {
 		if sc, present := userStatusChange[s.User]; !present || s.Timestamp > sc.Timestamp {
 			userStatusChange[s.User] = s
 		}
@@ -78,7 +79,7 @@ func (r ReviewInfo) String() string {
 
 		// Finally, if it's an inline comment print the file and line number
 		if c.Path != "" {
-			output = output + fmt.Sprintf(" [%s@%d]", c.Path, c.Line)
+			output = output + fmt.Sprintf(" [%s:%d@%d]", c.Path, c.Line, c.Diff)
 		}
 
 		output = output + fmt.Sprintf("\n")
@@ -95,7 +96,7 @@ func FetchReviewInfo(apiToken string, id string, since string) (*ReviewInfo, err
 		return nil, fmt.Errorf("differential id '%s' unexpected format (Dnnn)", id)
 	}
 
-	result := ReviewInfo{Id: id}
+	result := ReviewInfo{RevisionId: id}
 
 	phabClient, err := gonduit.Dial("https://p.daedalean.ai", &core.ClientOptions{APIToken: apiToken})
 	if err != nil {
@@ -159,12 +160,15 @@ func FetchReviewInfo(apiToken string, id string, since string) (*ReviewInfo, err
 
 			switch t.Type {
 			case "inline":
-				// If it's an inline comment the Fields contains the file path and line
+				// If it's an inline comment the Fields contains the file path, line and diff ID
+				diff := t.Fields["diff"].(map[string]interface{})
+				commentDiff := int(diff["id"].(float64))
 				commentPath := t.Fields["path"].(string)
 				commentLine := int(t.Fields["line"].(float64))
 
 				for _, c := range t.Comments {
 					newComment := ReviewComment{PhabTransaction: transData,
+						Diff: commentDiff,
 						Path: commentPath,
 						Line: commentLine,
 						Text: c.Content["raw"].(string)}
@@ -184,7 +188,13 @@ func FetchReviewInfo(apiToken string, id string, since string) (*ReviewInfo, err
 				newStatus := ReviewStatus{PhabTransaction: transData,
 					Status: t.Fields["new"].(string)}
 
-				result.Status = append(result.Status, newStatus)
+				result.Statuses = append(result.Statuses, newStatus)
+
+			case "accept":
+				newStatus := ReviewStatus{PhabTransaction: transData,
+					Status: "accepted"}
+
+				result.Statuses = append(result.Statuses, newStatus)
 
 			}
 		}
