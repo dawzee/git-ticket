@@ -88,6 +88,10 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 					fmt.Printf("%s reviewed %s: %s\n", reviewer.DisplayName(), cl.LastEdit, cl)
 				}
 			}
+		case "reviews":
+			for _, r := range snapshot.Reviews {
+				fmt.Printf("%s\n", r)
+			}
 		case "labels":
 			for _, l := range labels {
 				fmt.Printf("%s\n", l)
@@ -139,6 +143,12 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 		}
 
 		fmt.Printf("- %s : %s\n", cl.Title, st.ColorString())
+	}
+
+	// Reviews
+	fmt.Printf("reviews:\n")
+	for _, review := range snapshot.Reviews {
+		fmt.Printf("- %s (%d comments)\n", review.RevisionId, len(review.Comments))
 	}
 
 	// Labels
@@ -203,5 +213,5 @@ var showCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(showCmd)
 	showCmd.Flags().StringVarP(&showFieldsQuery, "field", "f", "",
-		"Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,humanId,id,labels,shortId,status,title,workflow,actors,participants]")
+		"Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,humanId,id,labels,reviews,shortId,status,title,workflow,actors,participants]")
 }

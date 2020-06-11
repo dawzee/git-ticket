@@ -13,7 +13,7 @@ git-ticket show [<id>] [flags]
 ### Options
 
 ```
-  -f, --field string   Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,humanId,id,labels,shortId,status,title,workflow,actors,participants]
+  -f, --field string   Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,humanId,id,labels,reviews,shortId,status,title,workflow,actors,participants]
   -h, --help           help for show
 ```
 

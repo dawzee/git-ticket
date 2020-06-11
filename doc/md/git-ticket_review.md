@@ -19,4 +19,5 @@ git-ticket review [<id>] [flags]
 ### SEE ALSO
 
 * [git-ticket](git-ticket.md)	 - A ticket tracker embedded in Git.
+* [git-ticket review fetch](git-ticket_review_fetch.md)	 - Fetch review data for a ticket.
 

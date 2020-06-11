@@ -211,7 +211,31 @@ function _git-ticket_push {
   _arguments
 }
 
+
 function _git-ticket_review {
+  local -a commands
+
+  _arguments -C \
+    "1: :->cmnds" \
+    "*::arg:->args"
+
+  case $state in
+  cmnds)
+    commands=(
+      "fetch:Fetch review data for a ticket."
+    )
+    _describe "command" commands
+    ;;
+  esac
+
+  case "$words[1]" in
+  fetch)
+    _git-ticket_review_fetch
+    ;;
+  esac
+}
+
+function _git-ticket_review_fetch {
   _arguments
 }
 
@@ -221,7 +245,7 @@ function _git-ticket_select {
 
 function _git-ticket_show {
   _arguments \
-    '(-f --field)'{-f,--field}'[Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,humanId,id,labels,shortId,status,title,workflow,actors,participants]]:'
+    '(-f --field)'{-f,--field}'[Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,humanId,id,labels,reviews,shortId,status,title,workflow,actors,participants]]:'
 }
 
 
