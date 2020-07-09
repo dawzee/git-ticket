@@ -136,10 +136,10 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 	// Checklists
 	fmt.Printf("checklists:\n")
 	for clLabel, st := range snapshot.GetChecklistCompoundStates() {
-		cl, present := bug.ChecklistStore[clLabel]
+		cl, err := bug.GetChecklist(clLabel)
 
-		if !present {
-			return fmt.Errorf("unknown checklist: %s", clLabel)
+		if err != nil {
+			return err
 		}
 
 		fmt.Printf("- %s : %s\n", cl.Title, st.ColorString())
