@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/daedaleanai/git-ticket/bug"
+	"github.com/daedaleanai/git-ticket/config"
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/identity"
 	"github.com/daedaleanai/git-ticket/repository"
@@ -794,7 +795,7 @@ func (c *RepoCache) Pull(remote string) error {
 		}
 	}
 
-	err = c.MergeConfigs(remote)
+	err = config.MergeAll(c.repo, remote)
 	if err != nil {
 		return err
 	}
@@ -1109,85 +1110,15 @@ func (c *RepoCache) ListConfigs() ([]string, error) {
 	c.muConfig.RLock()
 	defer c.muConfig.RUnlock()
 
-	refs, err := c.repo.ListRefs(configRefPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("cache: failed to get a list of config refs: %s", err)
-	}
-
-	configs := make([]string, 0)
-	for _, ref := range refs {
-		configs = append(configs, ref[len(configRefPrefix):])
-	}
-
-	return configs, nil
+	return config.ListConfigs(c.repo)
 }
 
 // Store the configuration data under the given name
-func (c *RepoCache) SetConfig(name string, config []byte) error {
+func (c *RepoCache) SetConfig(name string, configData []byte) error {
 	c.muConfig.Lock()
 	defer c.muConfig.Unlock()
 
-	// Store the blob in the repository
-	blobHash, err := c.repo.StoreData(config)
-	if err != nil {
-		return fmt.Errorf("cache: failed to store config data in git: %s", err)
-	}
-
-	// Make a tree referencing the blob
-	tree := []repository.TreeEntry{
-		{
-			ObjectType: repository.Blob,
-			Hash:       blobHash,
-			Name:       "config.json",
-		},
-	}
-
-	// Store the tree in git
-	treeHash, err := c.repo.StoreTree(tree)
-	if err != nil {
-		return fmt.Errorf("cache: failed to store the config tree in git: %s", err)
-	}
-
-	refName := configRefPrefix + name
-	exists, err := c.repo.RefExist(refName)
-	if err != nil {
-		return fmt.Errorf("cache: failed to determine if ref %s exists: %s", refName, err)
-	}
-
-	var commitHash git.Hash
-	if exists {
-		oldCommitHash, err := c.repo.ResolveRef(refName)
-		if err != nil {
-			return fmt.Errorf("cache: failed to resolve ref %s: %s", refName, err)
-		}
-
-		oldTreeHash, err := c.repo.GetTreeHash(oldCommitHash)
-		if err != nil {
-			return fmt.Errorf("cache: failed to get the tree for commit %s (ref: %s): %s", oldCommitHash, refName, err)
-		}
-
-		// The same tree has as in the previous commit means that nothing has actually changed.
-		// This means success
-		if oldTreeHash == treeHash {
-			return nil
-		}
-
-		// Otherwise we reference the old commit as the parent commit
-		commitHash, err = c.repo.StoreCommitWithParent(treeHash, oldCommitHash)
-	} else {
-		commitHash, err = c.repo.StoreCommit(treeHash)
-	}
-
-	if err != nil {
-		return fmt.Errorf("cache: failed to make a git commit: %s", err)
-	}
-
-	err = c.repo.UpdateRef(refName, commitHash)
-	if err != nil {
-		return fmt.Errorf("cache: failed to update git ref %s: %s", refName, err)
-	}
-
-	return nil
+	return config.SetConfig(c.repo, name, configData)
 }
 
 // Get the named configuration data
@@ -1195,108 +1126,5 @@ func (c *RepoCache) GetConfig(name string) ([]byte, error) {
 	c.muConfig.RLock()
 	defer c.muConfig.RUnlock()
 
-	refName := configRefPrefix + name
-	commitHash, err := c.repo.ResolveRef(refName)
-	if err != nil {
-		return nil, fmt.Errorf("cache: failed to resolve ref %s: %s", refName, err)
-	}
-
-	treeHash, err := c.repo.GetTreeHash(commitHash)
-	if err != nil {
-		return nil, fmt.Errorf("cache: failed to get the tree for commit %s (ref: %s): %s", commitHash, refName, err)
-	}
-
-	tree, err := c.repo.ListEntries(treeHash)
-	if err != nil {
-		return nil, fmt.Errorf("cache: failed to list entries in tree %s (ref: %s): %s", treeHash, refName, err)
-	}
-
-	for _, entry := range tree {
-		if entry.ObjectType != repository.Blob {
-			continue
-		}
-
-		if entry.Name == "config.json" {
-			data, err := c.repo.ReadData(entry.Hash)
-			if err != nil {
-				return nil, fmt.Errorf("cache: failed to get data for blob %s (ref: %s): %s", entry.Hash, refName, err)
-			}
-			return data, nil
-		}
-	}
-	return nil, fmt.Errorf(
-		`cache: failed to find "config.json" blob in the tree corresponding to the HEAD of %s`,
-		refName)
-}
-
-// Merge the configuration data fetched from the remote
-func (c *RepoCache) MergeConfigs(remote string) error {
-	c.muConfig.RLock()
-	defer c.muConfig.RUnlock()
-
-	remoteRefSpec := fmt.Sprintf(configRemoteRefPattern, remote)
-	remoteRefs, err := c.repo.ListRefs(remoteRefSpec)
-
-	if err != nil {
-		return fmt.Errorf("cache: failed to list refs for spec %s: %s", remoteRefSpec, err)
-	}
-
-	for _, remoteRef := range remoteRefs {
-		refName := remoteRef[len(remoteRefSpec):]
-		localRef := configRefPrefix + refName
-
-		exist, err := c.repo.RefExist(localRef)
-		if err != nil {
-			return fmt.Errorf("cache: failed to check if ref exists %s: %s", refName, err)
-		}
-
-		if !exist {
-			err = c.repo.CopyRef(remoteRef, localRef)
-			if err != nil {
-				return fmt.Errorf("cache: failed to copy %s to %s: %s", remoteRef, localRef, err)
-			}
-			return nil
-		}
-
-		localCommit, err := c.repo.ResolveRef(localRef)
-		if err != nil {
-			return fmt.Errorf("cache: failed to resolve %s: %s", localRef, err)
-		}
-		remoteCommit, err := c.repo.ResolveRef(remoteRef)
-		if err != nil {
-			return fmt.Errorf("cache: failed to resolve %s: %s", remoteRef, err)
-		}
-
-		// Refs are the same
-		if localCommit == remoteCommit {
-			continue
-		}
-
-		ancestor, err := c.repo.FindCommonAncestor(localCommit, remoteCommit)
-		if err != nil {
-			return fmt.Errorf("cache: failed to get common ancestor of merge commits for %s: %s", refName, err)
-		}
-
-		// Local commit is a child of the remote commit
-		if ancestor == remoteCommit {
-			continue
-		}
-
-		// Local and remote configurations diverged, making a backup of the local version, adopting the remote version
-		localBak := fmt.Sprintf(configConflictRefPattern, refName, localCommit)
-		err = c.repo.CopyRef(localRef, localBak)
-		if err != nil {
-			return fmt.Errorf("cache: failed to create a backup ref %s: %s", localBak, err)
-		}
-
-		err = c.repo.UpdateRef(localRef, remoteCommit)
-		if err != nil {
-			return fmt.Errorf("cache: failed to update ref %s: %s", refName, err)
-		}
-
-		// This sucks, but I am not sure how to do it better
-		fmt.Printf("Warning: Changes to your local config (%s) are not based on based on remote config\n", refName)
-		fmt.Printf("Warning: and therefore have been discarded, backed up at: %s", localBak)
-	}
-	return nil
+	return config.GetConfig(c.repo, name)
 }

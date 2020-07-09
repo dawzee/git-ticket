@@ -156,9 +156,10 @@ func (snap *Snapshot) GetUserChecklists(reviewer entity.Id) (map[string]Checklis
 			if snapshotChecklist, present := snap.Checklists[lblStr][reviewer]; present {
 				checklists[lblStr] = snapshotChecklist.Checklist
 			} else {
-				checklists[lblStr], present = ChecklistStore[lblStr]
-				if !present {
-					return nil, fmt.Errorf("invalid checklist %s", l)
+				var err error
+				checklists[lblStr], err = GetChecklist(lblStr)
+				if err != nil {
+					return nil, err
 				}
 			}
 		}
