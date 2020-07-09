@@ -10,6 +10,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var configFile string
+
 func runConfigSet(cmd *cobra.Command, args []string) error {
 	backend, err := cache.NewRepoCache(repo)
 	if err != nil {
@@ -22,14 +24,23 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("only one config can be set at a time")
 	}
 
-	configData, err := input.ConfigEditorInput(backend)
-	if err == input.ErrEmptyMessage {
-		fmt.Println("Empty config, aborting.")
-		return nil
-	}
+	var configData string
 
-	if err != nil {
-		return fmt.Errorf("failed to get config data from the editor: %s", err)
+	if configFile != "" {
+		configData, err = input.ConfigFileInput(configFile)
+		if err != nil {
+			return err
+		}
+	} else {
+		configData, err = input.ConfigEditorInput(backend)
+		if err == input.ErrEmptyMessage {
+			fmt.Println("Empty config, aborting.")
+			return nil
+		}
+
+		if err != nil {
+			return fmt.Errorf("failed to get config data from the editor: %s", err)
+		}
 	}
 
 	// Validate json
@@ -50,4 +61,10 @@ var configSetCmd = &cobra.Command{
 
 func init() {
 	configCmd.AddCommand(configSetCmd)
+
+	configSetCmd.Flags().SortFlags = false
+
+	configSetCmd.Flags().StringVarP(&configFile, "file", "F", "",
+		"Take the config from the given file. Use - to read the config from the standard input",
+	)
 }
