@@ -56,6 +56,10 @@ func ParseQuery(query string) (*Query, error) {
 			f := AuthorFilter(qualifierQuery)
 			result.Author = append(result.Author, f)
 
+		case "assignee":
+			f := AssigneeFilter(qualifierQuery)
+			result.Assignee = append(result.Assignee, f)
+
 		case "actor":
 			f := ActorFilter(qualifierQuery)
 			result.Actor = append(result.Actor, f)

@@ -15,6 +15,7 @@ import (
 var (
 	lsStatusQuery      []string
 	lsAuthorQuery      []string
+	lsAssigneeQuery    []string
 	lsParticipantQuery []string
 	lsLabelQuery       []string
 	lsTitleQuery       []string
@@ -129,6 +130,11 @@ func lsQueryFromFlags() (*cache.Query, error) {
 		query.Author = append(query.Author, f)
 	}
 
+	for _, assignee := range lsAssigneeQuery {
+		f := cache.AssigneeFilter(assignee)
+		query.Assignee = append(query.Assignee, f)
+	}
+
 	for _, actor := range lsActorQuery {
 		f := cache.ActorFilter(actor)
 		query.Actor = append(query.Actor, f)
@@ -182,11 +188,11 @@ var lsCmd = &cobra.Command{
 	Long: `Display a summary of each ticket.
 
 You can pass an additional query to filter and order the list. This query can be expressed either with a simple query language or with flags.`,
-	Example: `List open tickets sorted by last edition with a query:
-git ticket ls status:open sort:edit-desc
+	Example: `List vetted tickets sorted by last edition with a query:
+git ticket ls status:vetted sort:edit-desc
 
-List closed tickets sorted by creation with flags:
-git ticket ls --status closed --by creation
+List merged tickets sorted by creation with flags:
+git ticket ls --status merged --by creation
 `,
 	PreRunE: loadRepo,
 	RunE:    runLsBug,
@@ -198,13 +204,15 @@ func init() {
 	lsCmd.Flags().SortFlags = false
 
 	lsCmd.Flags().StringSliceVarP(&lsStatusQuery, "status", "s", nil,
-		"Filter by status. Valid values are [open,closed]")
+		"Filter by status")
 	lsCmd.Flags().StringSliceVarP(&lsAuthorQuery, "author", "a", nil,
 		"Filter by author")
 	lsCmd.Flags().StringSliceVarP(&lsParticipantQuery, "participant", "p", nil,
 		"Filter by participant")
-	lsCmd.Flags().StringSliceVarP(&lsActorQuery, "actor", "A", nil,
+	lsCmd.Flags().StringSliceVarP(&lsActorQuery, "actor", "", nil,
 		"Filter by actor")
+	lsCmd.Flags().StringSliceVarP(&lsAssigneeQuery, "assignee", "A", nil,
+		"Filter by assignee")
 	lsCmd.Flags().StringSliceVarP(&lsLabelQuery, "label", "l", nil,
 		"Filter by label")
 	lsCmd.Flags().StringSliceVarP(&lsTitleQuery, "title", "t", nil,
