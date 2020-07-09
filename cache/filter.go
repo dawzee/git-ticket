@@ -49,6 +49,25 @@ func AuthorFilter(query string) Filter {
 	}
 }
 
+// AssigneeFilter return a Filter that match a bug assignee
+func AssigneeFilter(query string) Filter {
+	return func(excerpt *BugExcerpt, resolver resolver) bool {
+		query = strings.ToLower(query)
+
+		// Normal identity
+		if excerpt.AssigneeId != "" {
+			assignee, err := resolver.ResolveIdentityExcerpt(excerpt.AssigneeId)
+			if err != nil {
+				panic(err)
+			}
+
+			return assignee.Match(query)
+		}
+
+		return false
+	}
+}
+
 // LabelFilter return a Filter that match a label
 func LabelFilter(label string) Filter {
 	return func(excerpt *BugExcerpt, resolver resolver) bool {
@@ -120,6 +139,7 @@ func NoLabelFilter() Filter {
 type Filters struct {
 	Status      []Filter
 	Author      []Filter
+	Assignee    []Filter
 	Actor       []Filter
 	Participant []Filter
 	Label       []Filter
@@ -134,6 +154,10 @@ func (f *Filters) Match(excerpt *BugExcerpt, resolver resolver) bool {
 	}
 
 	if match := f.orMatch(f.Author, excerpt, resolver); !match {
+		return false
+	}
+
+	if match := f.orMatch(f.Assignee, excerpt, resolver); !match {
 		return false
 	}
 
