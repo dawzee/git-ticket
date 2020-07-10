@@ -64,6 +64,10 @@ func (IdentityStub) AvatarUrl() string {
 	panic("identities needs to be properly loaded with identity.ReadLocal()")
 }
 
+func (IdentityStub) PhabID() string {
+	panic("identities needs to be properly loaded with identity.ReadLocal()")
+}
+
 func (IdentityStub) Keys() []*Key {
 	panic("identities needs to be properly loaded with identity.ReadLocal()")
 }

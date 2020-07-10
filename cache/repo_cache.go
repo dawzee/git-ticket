@@ -10,10 +10,14 @@ import (
 	"path"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/thought-machine/gonduit"
+	"github.com/thought-machine/gonduit/core"
+	"github.com/thought-machine/gonduit/requests"
 
 	"github.com/daedaleanai/git-ticket/bug"
 	"github.com/daedaleanai/git-ticket/config"
@@ -911,6 +915,14 @@ func (c *RepoCache) ResolveIdentityExcerptPrefix(prefix string) (*IdentityExcerp
 	})
 }
 
+// ResolveIdentityPhabID retrieve an Identity matching a Phabricator ID.
+// It fails if multiple identities match.
+func (c *RepoCache) ResolveIdentityPhabID(phabID string) (*IdentityCache, error) {
+	return c.ResolveIdentityMatcher(func(excerpt *IdentityExcerpt) bool {
+		return excerpt.PhabID == phabID
+	})
+}
+
 // ResolveIdentityPrefix retrieve an Identity matching an id prefix.
 // It fails if multiple identities match.
 func (c *RepoCache) ResolveIdentityPrefix(prefix string) (*IdentityCache, error) {
@@ -1073,8 +1085,77 @@ func (c *RepoCache) NewIdentityFull(name string, email string, login string, ava
 }
 
 func (c *RepoCache) NewIdentityRaw(name string, email string, login string, avatarUrl string, metadata map[string]string) (*IdentityCache, error) {
-	i := identity.NewIdentityFull(name, email, login, avatarUrl)
+	// attempt to populate the phabricator ID, for now it's not fatal if it fails
+	phabId, _ := c.getPhabId(email)
+
+	i := identity.NewIdentityFull(name, email, login, avatarUrl, phabId)
 	return c.finishIdentity(i, metadata)
+}
+
+// UpdatedIdentity updates an existing identity in the repository and cache
+func (c *RepoCache) UpdateIdentity(i *IdentityCache, name string, email string, login string, avatarUrl string) error {
+	// attempt to populate the phabricator ID, for now it's not fatal if it fails
+	phabId, _ := c.getPhabId(email)
+
+	err := i.Mutate(func(mutator identity.Mutator) identity.Mutator {
+		mutator.Name = name
+		mutator.Email = email
+		mutator.AvatarUrl = avatarUrl
+		mutator.PhabID = phabId
+		return mutator
+	})
+
+	if err != nil {
+		return err
+	}
+
+	err = i.CommitAsNeeded()
+	if err != nil {
+		return err
+	}
+
+	c.muIdentity.Lock()
+	c.identities[i.Id()] = i
+	c.muIdentity.Unlock()
+
+	// force the write of the excerpt
+	return c.identityUpdated(i.Id())
+}
+
+func (c *RepoCache) getPhabId(email string) (string, error) {
+	// Assuming that the e-mail prefix is username on Phabricator
+	user := email[0:strings.Index(email, "@")]
+
+	// We need an API token to access Phabricator through conduit
+	var apiToken string
+	var err error
+	if apiToken, err = c.LocalConfig().ReadString("daedalean.taskmgr-api-token"); err != nil {
+		if apiToken, err = c.GlobalConfig().ReadString("daedalean.taskmgr-api-token"); err != nil {
+			msg := `No Phabricator API token set. Please go to
+	https://p.daedalean.ai/settings/user/<YOUR_USERNAME_HERE>/page/apitokens/
+click on <Generate API Token>, and then paste the token into this command
+	git config --global --replace-all daedalean.taskmgr-api-token <PASTE_TOKEN_HERE>`
+			return "", errors.New(msg)
+		}
+	}
+
+	phabClient, err := gonduit.Dial("https://p.daedalean.ai", &core.ClientOptions{APIToken: apiToken})
+	if err != nil {
+		return "", err
+	}
+
+	request := requests.SearchRequest{Constraints: map[string]interface{}{"usernames": []string{user}}}
+
+	response, err := phabClient.UserSearch(request)
+	if err != nil {
+		return "", err
+	}
+
+	if len(response.Data) == 0 {
+		return "", fmt.Errorf("no Phabricator users matching %s", user)
+	}
+
+	return response.Data[0].PHID, nil
 }
 
 func (c *RepoCache) finishIdentity(i *identity.Identity, metadata map[string]string) (*IdentityCache, error) {

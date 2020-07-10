@@ -56,7 +56,7 @@ func NewIdentity(name string, email string) *Identity {
 	}
 }
 
-func NewIdentityFull(name string, email string, login string, avatarUrl string) *Identity {
+func NewIdentityFull(name string, email string, login string, avatarUrl string, phabID string) *Identity {
 	return &Identity{
 		id: entity.UnsetId,
 		versions: []*Version{
@@ -65,6 +65,7 @@ func NewIdentityFull(name string, email string, login string, avatarUrl string) 
 				email:     email,
 				login:     login,
 				avatarURL: avatarUrl,
+				phabID:    phabID,
 				nonce:     makeNonce(20),
 			},
 		},
@@ -286,6 +287,7 @@ type Mutator struct {
 	Login     string
 	Email     string
 	AvatarUrl string
+	PhabID    string
 	Keys      []*Key
 }
 
@@ -296,6 +298,7 @@ func (i *Identity) Mutate(f func(orig Mutator) Mutator) {
 		Email:     i.Email(),
 		Login:     i.Login(),
 		AvatarUrl: i.AvatarUrl(),
+		PhabID:    i.PhabID(),
 		Keys:      i.Keys(),
 	}
 	mutated := f(orig)
@@ -307,6 +310,7 @@ func (i *Identity) Mutate(f func(orig Mutator) Mutator) {
 		email:     mutated.Email,
 		login:     mutated.Login,
 		avatarURL: mutated.AvatarUrl,
+		phabID:    mutated.PhabID,
 		keys:      mutated.Keys,
 	})
 }
@@ -522,6 +526,11 @@ func (i *Identity) Login() string {
 // AvatarUrl return the last version of the Avatar URL
 func (i *Identity) AvatarUrl() string {
 	return i.lastVersion().avatarURL
+}
+
+// PhabID return the last version of the Phabricator ID
+func (i *Identity) PhabID() string {
+	return i.lastVersion().phabID
 }
 
 // Keys return the last version of the valid keys

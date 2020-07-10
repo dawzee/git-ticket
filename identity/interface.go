@@ -30,6 +30,10 @@ type Interface interface {
 	// Can be empty.
 	AvatarUrl() string
 
+	// PhabID return the last version of the Phabricator ID
+	// Can be empty.
+	PhabID() string
+
 	// Keys return the last version of the valid keys
 	// Can be empty.
 	Keys() []*Key

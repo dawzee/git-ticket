@@ -27,6 +27,7 @@ type Version struct {
 	email     string // as defined in git or from a bridge when importing the identity
 	login     string // from a bridge when importing the identity
 	avatarURL string
+	phabID    string
 
 	// The set of keys valid at that time, from this version onward, until they get removed
 	// in a new version. This allow to have multiple key for the same identity (e.g. one per
@@ -55,6 +56,7 @@ type VersionJSON struct {
 	Email     string            `json:"email,omitempty"`
 	Login     string            `json:"login,omitempty"`
 	AvatarUrl string            `json:"avatar_url,omitempty"`
+	PhabID    string            `json:"phab_id,omitempty"`
 	Keys      []*Key            `json:"pub_keys,omitempty"`
 	Nonce     []byte            `json:"nonce,omitempty"`
 	Metadata  map[string]string `json:"metadata,omitempty"`
@@ -66,6 +68,7 @@ func (v *Version) Clone() *Version {
 		name:      v.name,
 		email:     v.email,
 		avatarURL: v.avatarURL,
+		phabID:    v.phabID,
 		keys:      make([]*Key, len(v.keys)),
 	}
 
@@ -85,6 +88,7 @@ func (v *Version) MarshalJSON() ([]byte, error) {
 		Email:         v.email,
 		Login:         v.login,
 		AvatarUrl:     v.avatarURL,
+		PhabID:        v.phabID,
 		Keys:          v.keys,
 		Nonce:         v.nonce,
 		Metadata:      v.metadata,
@@ -108,6 +112,7 @@ func (v *Version) UnmarshalJSON(data []byte) error {
 	v.email = aux.Email
 	v.login = aux.Login
 	v.avatarURL = aux.AvatarUrl
+	v.phabID = aux.PhabID
 	v.keys = aux.Keys
 	v.nonce = aux.Nonce
 	v.metadata = aux.Metadata

@@ -42,49 +42,41 @@ type ReviewInfo struct {
 	Comments        []ReviewComment
 }
 
-// String implements the Stringer interface for ReviewInfo
-func (r ReviewInfo) String() string {
+// OneLineComment returns a string containing the comment text, and it's an inline
+// comment the file & line details, on a single line. Comments over 50 characters
+// are truncated.
+func (c ReviewComment) OneLineComment() string {
+	var output string
 
-	// The Differential ID
-	output := fmt.Sprintf("%s\n", r.RevisionId)
+	// Put the comment on one line and output the first 50 characters
+	oneLineText := strings.ReplaceAll(c.Text, "\n", " ")
+	if len(oneLineText) > 50 {
+		output = fmt.Sprintf("%.47s...", oneLineText)
+	} else {
+		output = fmt.Sprintf("%-50s", oneLineText)
+	}
 
+	// If it's an inline comment append the file and line number
+	if c.Path != "" {
+		output = output + fmt.Sprintf(" [%s:%d@%d]", c.Path, c.Line, c.Diff)
+	}
+
+	return output
+}
+
+// LatestUserStatuses returns a map of users and the latest status they set for
+// this review.
+func (r ReviewInfo) LatestUserStatuses() map[string]ReviewStatus {
 	// Create a map of the latest status change made by all users
 	userStatusChange := make(map[string]ReviewStatus)
+
 	for _, s := range r.Statuses {
 		if sc, present := userStatusChange[s.User]; !present || s.Timestamp > sc.Timestamp {
 			userStatusChange[s.User] = s
 		}
 	}
 
-	for u, s := range userStatusChange {
-		// TODO convert the Phabricator ID into a human name
-		output = output + fmt.Sprintf("- %s: %s (%s)\n", u, s.Status, time.Unix(s.Timestamp, 0).Format(time.RFC822))
-	}
-
-	// Output all the comments
-	output = output + fmt.Sprintf("==== %d comments ====\n", len(r.Comments))
-
-	for _, c := range r.Comments {
-		// User and timestamp of comment
-		// TODO convert the Phabricator ID into a human name
-		output = output + fmt.Sprintf("- %s (%s)", c.User, time.Unix(c.Timestamp, 0).Format(time.RFC822))
-
-		// Put the comment on one line and output the first 50 characters
-		oneLineText := strings.ReplaceAll(c.Text, "\n", " ")
-		if len(oneLineText) > 50 {
-			output = output + fmt.Sprintf(" : %.47s...", oneLineText)
-		} else {
-			output = output + fmt.Sprintf(" : %-50s", oneLineText)
-		}
-
-		// Finally, if it's an inline comment print the file and line number
-		if c.Path != "" {
-			output = output + fmt.Sprintf(" [%s:%d@%d]", c.Path, c.Line, c.Diff)
-		}
-
-		output = output + fmt.Sprintf("\n")
-	}
-	return output
+	return userStatusChange
 }
 
 // FetchReviewInfo exports review comments and status info from Phabricator for

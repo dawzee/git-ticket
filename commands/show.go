@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/daedaleanai/git-ticket/bug"
 	"github.com/daedaleanai/git-ticket/cache"
@@ -90,7 +91,36 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 			}
 		case "reviews":
 			for _, r := range snapshot.Reviews {
-				fmt.Printf("%s\n", r)
+				// The Differential ID
+				fmt.Printf("==== %s ====\n", r.RevisionId)
+
+				// The statuses
+				for u, s := range r.LatestUserStatuses() {
+					var userName string
+
+					if user, err := backend.ResolveIdentityPhabID(u); err != nil {
+						userName = "???"
+					} else {
+						userName = user.DisplayName()
+					}
+
+					fmt.Printf("(%s) %-20s: %s\n", time.Unix(s.Timestamp, 0).Format(time.RFC822), userName, s.Status)
+				}
+
+				// Output all the comments
+				fmt.Printf("---- %d comments ----\n", len(r.Comments))
+
+				for _, c := range r.Comments {
+					var userName string
+
+					if user, err := backend.ResolveIdentityPhabID(c.User); err != nil {
+						userName = "???"
+					} else {
+						userName = user.DisplayName()
+					}
+
+					fmt.Printf("(%s) %-20s: %s\n", time.Unix(c.Timestamp, 0).Format(time.RFC822), userName, c.OneLineComment())
+				}
 			}
 		case "labels":
 			for _, l := range labels {
