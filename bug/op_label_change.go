@@ -180,7 +180,7 @@ func ChangeLabels(b Interface, author identity.Interface, unixTime int64, add, r
 
 		// if it's a workflow, check it exists
 		if strings.HasPrefix(str, "workflow:") {
-			if newWorkflow = FindWorkflow(str); newWorkflow == nil {
+			if newWorkflow = FindWorkflow(Label(str)); newWorkflow == nil {
 				results = append(results, LabelChangeResult{Label: label, Status: LabelChangeInvalidWorkflow})
 				continue
 			}

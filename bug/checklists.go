@@ -31,7 +31,7 @@ type ChecklistSection struct {
 	Questions []ChecklistQuestion
 }
 type Checklist struct {
-	Label    string
+	Label    Label
 	Title    string
 	Sections []ChecklistSection
 }
@@ -40,7 +40,7 @@ type ChecklistSnapshot struct {
 	LastEdit time.Time
 }
 
-var checklistStore map[string]Checklist
+var checklistStore map[Label]Checklist
 var repo repository.ClockedRepo
 
 // initChecklistStore attempts to read the checklists configuration out of the
@@ -61,7 +61,7 @@ func initChecklistStore() error {
 		return fmt.Errorf("unable to read checklists config: %q", err)
 	}
 
-	checklistStoreTemp := make(map[string]Checklist)
+	checklistStoreTemp := make(map[Label]Checklist)
 
 	err = json.Unmarshal(checklistData, &checklistStoreTemp)
 	if err != nil {
@@ -74,7 +74,7 @@ func initChecklistStore() error {
 }
 
 // GetChecklist returns a Checklist template out of the store
-func GetChecklist(label string) (Checklist, error) {
+func GetChecklist(label Label) (Checklist, error) {
 	if checklistStore == nil {
 		if err := initChecklistStore(); err != nil {
 			return Checklist{}, err
@@ -88,6 +88,21 @@ func GetChecklist(label string) (Checklist, error) {
 	}
 
 	return cl, nil
+}
+
+// GetChecklistLabels returns a slice of all the available checklist labels
+func GetChecklistLabels() []Label {
+	if checklistStore == nil {
+		if err := initChecklistStore(); err != nil {
+			return nil
+		}
+	}
+
+	var labels []Label
+	for _, cl := range checklistStore {
+		labels = append(labels, cl.Label)
+	}
+	return labels
 }
 
 func (s ChecklistState) String() string {

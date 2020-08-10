@@ -6,6 +6,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 
+	"github.com/daedaleanai/git-ticket/bug"
 	"github.com/daedaleanai/git-ticket/cache"
 	"github.com/daedaleanai/git-ticket/commands/select"
 	"github.com/daedaleanai/git-ticket/input"
@@ -44,7 +45,7 @@ func runReviewChecklist(cmd *cobra.Command, args []string) error {
 	ticketChecklistLabels := make([]string, 0, len(ticketChecklists))
 
 	for k := range ticketChecklists {
-		ticketChecklistLabels = append(ticketChecklistLabels, k)
+		ticketChecklistLabels = append(ticketChecklistLabels, string(k))
 	}
 
 	// If there are multiple checklists associated with the ticket then give the
@@ -69,13 +70,13 @@ func runReviewChecklist(cmd *cobra.Command, args []string) error {
 
 	// Use the editor to edit the checklist, if it changed then create an update
 	// operation and commit
-	clChange, err := input.ChecklistEditorInput(repo, ticketChecklists[selectedChecklistLabel])
+	clChange, err := input.ChecklistEditorInput(repo, ticketChecklists[bug.Label(selectedChecklistLabel)])
 	if err != nil {
 		return err
 	}
 
 	if clChange {
-		_, err = b.SetChecklist(ticketChecklists[selectedChecklistLabel])
+		_, err = b.SetChecklist(ticketChecklists[bug.Label(selectedChecklistLabel)])
 		if err != nil {
 			return err
 		}

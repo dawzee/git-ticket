@@ -666,7 +666,7 @@ func (bug *Bug) Compile() Snapshot {
 		id:     bug.id,
 		Status: ProposedStatus,
 	}
-	snap.Checklists = make(map[string]map[entity.Id]ChecklistSnapshot)
+	snap.Checklists = make(map[Label]map[entity.Id]ChecklistSnapshot)
 	snap.Reviews = make(map[string]ReviewInfo)
 
 	it := NewOperationIterator(bug)
