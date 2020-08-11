@@ -22,6 +22,7 @@ type IdentityExcerpt struct {
 
 	Name              string
 	Login             string
+	PhabID            string
 	ImmutableMetadata map[string]string
 }
 
@@ -30,6 +31,7 @@ func NewIdentityExcerpt(i *identity.Identity) *IdentityExcerpt {
 		Id:                i.Id(),
 		Name:              i.Name(),
 		Login:             i.Login(),
+		PhabID:            i.PhabID(),
 		ImmutableMetadata: i.ImmutableMetadata(),
 	}
 }

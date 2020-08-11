@@ -12,12 +12,13 @@ func TestVersionSerialize(t *testing.T) {
 		name:      "name",
 		email:     "email",
 		avatarURL: "avatarUrl",
+		phabID:    "phabID",
 		keys: []*Key{
 			{
-				ArmoredPublicKey:      "pubkey1",
+				ArmoredPublicKey: "pubkey1",
 			},
 			{
-				ArmoredPublicKey:      "pubkey2",
+				ArmoredPublicKey: "pubkey2",
 			},
 		},
 		nonce: makeNonce(20),

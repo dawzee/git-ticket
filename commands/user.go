@@ -58,6 +58,8 @@ func runUser(cmd *cobra.Command, args []string) error {
 			}
 		case "name":
 			fmt.Printf("%s\n", id.Name())
+		case "phabId":
+			fmt.Printf("%s\n", id.PhabID())
 
 		default:
 			return fmt.Errorf("\nUnsupported field: %s\n", userFieldsQuery)
@@ -70,6 +72,7 @@ func runUser(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Name: %s\n", id.Name())
 	fmt.Printf("Email: %s\n", id.Email())
 	fmt.Printf("Login: %s\n", id.Login())
+	fmt.Printf("PhabID: %s\n", id.PhabID())
 	fmt.Printf("Last modification: %s (lamport %d)\n",
 		id.LastModification().Time().Format("Mon Jan 2 15:04:05 2006 +0200"),
 		id.LastModificationLamport())
@@ -94,5 +97,5 @@ func init() {
 	userCmd.Flags().SortFlags = false
 
 	userCmd.Flags().StringVarP(&userFieldsQuery, "field", "f", "",
-		"Select field to display. Valid values are [email,humanId,id,lastModification,lastModificationLamport,login,metadata,name]")
+		"Select field to display. Valid values are [email,humanId,id,lastModification,lastModificationLamport,login,metadata,name,phabId]")
 }

@@ -121,6 +121,11 @@ func (i *Bare) AvatarUrl() string {
 	return i.avatarUrl
 }
 
+// PhabID return the last version of the Phabricator ID
+func (i *Bare) PhabID() string {
+	return ""
+}
+
 // Keys return the last version of the valid keys
 func (i *Bare) Keys() []*Key {
 	return nil
