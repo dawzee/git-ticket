@@ -153,7 +153,7 @@ func ConfigEditorInput(repo repository.RepoCommon) (string, error) {
 	return removeCommentedLines(raw), nil
 }
 
-// ConfigFileInput read from either from a file or from the standard input
+// ConfigFileInput read either from a file or from the standard input
 // and extract the config data
 func ConfigFileInput(fileName string) (string, error) {
 	raw, err := TextFileInput(fileName)
