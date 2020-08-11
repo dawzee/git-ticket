@@ -1,10 +1,14 @@
 package bug
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/daedaleanai/git-ticket/config"
+	"github.com/daedaleanai/git-ticket/repository"
 	"github.com/daedaleanai/git-ticket/util/colors"
 )
 
@@ -36,7 +40,55 @@ type ChecklistSnapshot struct {
 	LastEdit time.Time
 }
 
-var ChecklistStore map[string]Checklist
+var checklistStore map[string]Checklist
+var repo repository.ClockedRepo
+
+// initChecklistStore attempts to read the checklists configuration out of the
+// current repository and use it to initialise the checklistStore
+func initChecklistStore() error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("unable to get the current working directory: %q", err)
+	}
+
+	repo, err := repository.NewGitRepo(cwd, Witnesser)
+	if err == repository.ErrNotARepo {
+		return fmt.Errorf("must be run from within a git repo")
+	}
+
+	checklistData, err := config.GetConfig(repo, "checklists")
+	if err != nil {
+		return fmt.Errorf("unable to read checklists config: %q", err)
+	}
+
+	checklistStoreTemp := make(map[string]Checklist)
+
+	err = json.Unmarshal(checklistData, &checklistStoreTemp)
+	if err != nil {
+		return fmt.Errorf("unable to load checklists: %q", err)
+	}
+
+	checklistStore = checklistStoreTemp
+
+	return nil
+}
+
+// GetChecklist returns a Checklist template out of the store
+func GetChecklist(label string) (Checklist, error) {
+	if checklistStore == nil {
+		if err := initChecklistStore(); err != nil {
+			return Checklist{}, err
+		}
+	}
+
+	cl, present := checklistStore[label]
+
+	if !present {
+		return cl, fmt.Errorf("invalid checklist %s", label)
+	}
+
+	return cl, nil
+}
 
 func (s ChecklistState) String() string {
 	switch s {
@@ -133,53 +185,4 @@ func (c Checklist) String() string {
 		}
 	}
 	return result
-}
-
-func init() {
-	// TODO put proper checklists here
-
-	// Initialise map of checklists
-	ChecklistStore = make(map[string]Checklist)
-
-	ChecklistStore["checklist:dummy-code"] =
-		Checklist{Label: "checklist:dummy-code",
-			Title: "Dummy Code Review Checklist",
-			Sections: []ChecklistSection{
-				ChecklistSection{Title: "Code review section 1",
-					Questions: []ChecklistQuestion{
-						ChecklistQuestion{Question: "Code review question 1?"},
-						ChecklistQuestion{Question: "Code review question 2?"},
-						ChecklistQuestion{Question: "Code review question 3?"},
-					},
-				},
-				ChecklistSection{Title: "Code review section 2",
-					Questions: []ChecklistQuestion{
-						ChecklistQuestion{Question: "Code review question 4?"},
-						ChecklistQuestion{Question: "Code review question 5?"},
-						ChecklistQuestion{Question: "Code review question 6?"},
-					},
-				},
-			},
-		}
-
-	ChecklistStore["checklist:dummy-test"] =
-		Checklist{Label: "checklist:dummy-test",
-			Title: "Dummy Test Review Checklist",
-			Sections: []ChecklistSection{
-				ChecklistSection{Title: "Test review section 1",
-					Questions: []ChecklistQuestion{
-						ChecklistQuestion{Question: "Test review question 1?"},
-						ChecklistQuestion{Question: "Test review question 2?"},
-						ChecklistQuestion{Question: "Test review question 3?"},
-					},
-				},
-				ChecklistSection{Title: "Test review section 2",
-					Questions: []ChecklistQuestion{
-						ChecklistQuestion{Question: "Test review question 4?"},
-						ChecklistQuestion{Question: "Test review question 5?"},
-						ChecklistQuestion{Question: "Test review question 6?"},
-					},
-				},
-			},
-		}
 }
