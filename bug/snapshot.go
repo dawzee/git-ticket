@@ -182,13 +182,14 @@ func (snap *Snapshot) GetChecklistCompoundStates() map[string]ChecklistState {
 			clMap, present := snap.Checklists[lblStr]
 			if present {
 				// at least one user has edited this checklist
+			ReviewsLoop:
 				for _, cl := range clMap {
 					clState := cl.CompoundState()
 					switch clState {
 					case Failed:
 						// someone failed it, it's failed
 						states[lblStr] = Failed
-						break
+						break ReviewsLoop
 					case Passed:
 						// someone passed it, and no-one failed it yet
 						states[lblStr] = Passed
