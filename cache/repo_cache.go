@@ -774,6 +774,11 @@ func (c *RepoCache) MergeAll(remote string) <-chan entity.MergeResult {
 	return out
 }
 
+// UpdateConfigs will update all the configs from the remote
+func (c *RepoCache) UpdateConfigs(remote string) (string, error) {
+	return config.UpdateConfigs(c.repo, remote)
+}
+
 // Push update a remote with the local changes
 func (c *RepoCache) Push(remote string) (string, error) {
 	stdout1, err := identity.Push(c.repo, remote)
@@ -791,7 +796,7 @@ func (c *RepoCache) Push(remote string) (string, error) {
 		return stdout3, err
 	}
 
-	return stdout1 + stdout2 + stdout3, nil
+	return "IDENTITIES\n" + stdout1 + "\nTICKETS\n" + stdout2 + "\nCONFIGS\n" + stdout3, nil
 }
 
 // Pull will do a Fetch + MergeAll
@@ -811,7 +816,7 @@ func (c *RepoCache) Pull(remote string) error {
 		}
 	}
 
-	err = config.MergeAll(c.repo, remote)
+	_, err = c.UpdateConfigs(remote)
 	if err != nil {
 		return err
 	}

@@ -127,13 +127,17 @@ func GetConfig(repo repository.ClockedRepo, name string) ([]byte, error) {
 		refName)
 }
 
-// Merge the configuration data fetched from the remote
-func MergeAll(repo repository.ClockedRepo, remote string) error {
+// UpdateConfigs fetches config data from the remote and updates the local references
+// If a config has been updated locally and on the server the local one is backed
+// up and replaced
+func UpdateConfigs(repo repository.ClockedRepo, remote string) (string, error) {
+	var out string
+
 	remoteRefSpec := fmt.Sprintf(configRemoteRefPattern, remote)
 	remoteRefs, err := repo.ListRefs(remoteRefSpec)
 
 	if err != nil {
-		return fmt.Errorf("cache: failed to list refs for spec %s: %s", remoteRefSpec, err)
+		return "", fmt.Errorf("failed to list refs for spec %s: %s", remoteRefSpec, err)
 	}
 
 	for _, remoteRef := range remoteRefs {
@@ -142,24 +146,27 @@ func MergeAll(repo repository.ClockedRepo, remote string) error {
 
 		exist, err := repo.RefExist(localRef)
 		if err != nil {
-			return fmt.Errorf("cache: failed to check if ref exists %s: %s", refName, err)
+			return out, fmt.Errorf("failed to check if ref exists %s: %s", localRef, err)
 		}
 
 		if !exist {
+			// New config
 			err = repo.CopyRef(remoteRef, localRef)
 			if err != nil {
-				return fmt.Errorf("cache: failed to copy %s to %s: %s", remoteRef, localRef, err)
+				return out, fmt.Errorf("failed to copy ref %s: %s", remoteRef, err)
 			}
-			return nil
+
+			out = out + fmt.Sprintf("%s: new\n", localRef)
+			continue
 		}
 
 		localCommit, err := repo.ResolveRef(localRef)
 		if err != nil {
-			return fmt.Errorf("cache: failed to resolve %s: %s", localRef, err)
+			return out, fmt.Errorf("failed to resolve local ref %s: %s", localRef, err)
 		}
 		remoteCommit, err := repo.ResolveRef(remoteRef)
 		if err != nil {
-			return fmt.Errorf("cache: failed to resolve %s: %s", remoteRef, err)
+			return out, fmt.Errorf("failed to resolve remote ref %s: %s", remoteRef, err)
 		}
 
 		// Refs are the same
@@ -169,7 +176,7 @@ func MergeAll(repo repository.ClockedRepo, remote string) error {
 
 		ancestor, err := repo.FindCommonAncestor(localCommit, remoteCommit)
 		if err != nil {
-			return fmt.Errorf("cache: failed to get common ancestor of merge commits for %s: %s", refName, err)
+			return out, fmt.Errorf("failed to get common ancestor %s %s: %s", localCommit, remoteCommit, err)
 		}
 
 		// Local commit is a child of the remote commit
@@ -177,21 +184,35 @@ func MergeAll(repo repository.ClockedRepo, remote string) error {
 			continue
 		}
 
+		// Remote commit is a child of the local commit
+		if ancestor == localCommit {
+			err = repo.UpdateRef(localRef, remoteCommit)
+			if err != nil {
+				return out, fmt.Errorf("failed to update ref %s: %s", localRef, err)
+			}
+
+			out = out + fmt.Sprintf("%s: updated to %s\n", localRef, remoteCommit)
+			continue
+		}
+
 		// Local and remote configurations diverged, making a backup of the local version, adopting the remote version
 		localBak := fmt.Sprintf(configConflictRefPattern, refName, localCommit)
 		err = repo.CopyRef(localRef, localBak)
 		if err != nil {
-			return fmt.Errorf("cache: failed to create a backup ref %s: %s", localBak, err)
+			return out, fmt.Errorf("failed to create a backup of ref %s: %s", localRef, err)
 		}
 
 		err = repo.UpdateRef(localRef, remoteCommit)
 		if err != nil {
-			return fmt.Errorf("cache: failed to update ref %s: %s", refName, err)
+			return out, fmt.Errorf("failed to update ref %s: %s", localRef, err)
 		}
 
+		out = out + fmt.Sprintf("%s: updated to %s\n", localRef, remoteCommit)
+
 		// This sucks, but I am not sure how to do it better
-		fmt.Printf("Warning: Changes to your local config (%s) are not based on based on remote config\n", refName)
-		fmt.Printf("Warning: and therefore have been discarded, backed up at: %s", localBak)
+		out = out + fmt.Sprintf("Warning: Changes to your local config (%s) are not based on based on remote config\n", refName)
+		out = out + fmt.Sprintf("Warning: and therefore have been discarded, backed up at: %s\n", localBak)
 	}
-	return nil
+
+	return out, nil
 }
