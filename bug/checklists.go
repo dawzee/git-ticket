@@ -41,7 +41,6 @@ type ChecklistSnapshot struct {
 }
 
 var checklistStore map[string]Checklist
-var checklistStoreInit bool
 var repo repository.ClockedRepo
 
 // initChecklistStore attempts to read the checklists configuration out of the
@@ -62,21 +61,21 @@ func initChecklistStore() error {
 		return fmt.Errorf("unable to read checklists config: %q", err)
 	}
 
-	checklistStore = make(map[string]Checklist)
+	checklistStoreTemp := make(map[string]Checklist)
 
-	err = json.Unmarshal(checklistData, &checklistStore)
+	err = json.Unmarshal(checklistData, &checklistStoreTemp)
 	if err != nil {
 		return fmt.Errorf("unable to load checklists: %q", err)
 	}
 
-	checklistStoreInit = true
+	checklistStore = checklistStoreTemp
 
 	return nil
 }
 
 // GetChecklist returns a Checklist template out of the store
 func GetChecklist(label string) (Checklist, error) {
-	if !checklistStoreInit {
+	if checklistStore == nil {
 		if err := initChecklistStore(); err != nil {
 			return Checklist{}, err
 		}
