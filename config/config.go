@@ -75,12 +75,14 @@ func SetConfig(repo repository.ClockedRepo, name string, config []byte) error {
 
 		// Otherwise we reference the old commit as the parent commit
 		commitHash, err = repo.StoreCommitWithParent(treeHash, oldCommitHash)
+		if err != nil {
+			return fmt.Errorf("cache: failed to make a git commit: %s", err)
+		}
 	} else {
 		commitHash, err = repo.StoreCommit(treeHash)
-	}
-
-	if err != nil {
-		return fmt.Errorf("cache: failed to make a git commit: %s", err)
+		if err != nil {
+			return fmt.Errorf("cache: failed to make a git commit: %s", err)
+		}
 	}
 
 	err = repo.UpdateRef(refName, commitHash)
