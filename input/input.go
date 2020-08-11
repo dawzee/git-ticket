@@ -139,18 +139,21 @@ func IdentityVersionKeyEditorInput(repo repository.RepoCommon) (string, error) {
 const configTemplate = `
 # Please enter your configuration data. Lines starting with '#' will be ignored,
 # and an empty message aborts the operation.
+
+%s
 `
 
 // ConfigEditorInput will open the default editor in the terminal
 // with a template for the user to fill.
-func ConfigEditorInput(repo repository.RepoCommon) (string, error) {
-	raw, err := launchEditorWithTemplate(repo, configFilename, configTemplate)
+func ConfigEditorInput(repo repository.RepoCommon, existingConfig string) (string, error) {
+	template := fmt.Sprintf(configTemplate, existingConfig)
+	raw, err := launchEditorWithTemplate(repo, configFilename, template)
 
 	if err != nil {
 		return "", err
 	}
 
-	return removeCommentedLines(raw), nil
+	return processComment(raw)
 }
 
 // ConfigFileInput read either from a file or from the standard input

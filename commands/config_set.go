@@ -32,7 +32,12 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		configData, err = input.ConfigEditorInput(backend)
+		currentConfig, err := backend.GetConfig(args[0])
+		if err != nil {
+			configData, err = input.ConfigEditorInput(backend, "")
+		} else {
+			configData, err = input.ConfigEditorInput(backend, string(currentConfig))
+		}
 		if err == input.ErrEmptyMessage {
 			fmt.Println("Empty config, aborting.")
 			return nil
