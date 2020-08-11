@@ -14,7 +14,7 @@ type Transition struct {
 }
 
 type Workflow struct {
-	label        string
+	label        Label
 	initialState Status
 	transitions  []Transition
 }
@@ -22,13 +22,22 @@ type Workflow struct {
 var workflowStore []Workflow
 
 // FindWorkflow searches the workflow store by name and returns a pointer to it
-func FindWorkflow(name string) *Workflow {
+func FindWorkflow(name Label) *Workflow {
 	for wf := range workflowStore {
 		if workflowStore[wf].label == name {
 			return &workflowStore[wf]
 		}
 	}
 	return nil
+}
+
+// GetWorkflowLabels returns a slice of all the available workflow labels
+func GetWorkflowLabels() []Label {
+	var labels []Label
+	for _, wf := range workflowStore {
+		labels = append(labels, wf.label)
+	}
+	return labels
 }
 
 // NextStates returns a slice of next possible states in the workflow
