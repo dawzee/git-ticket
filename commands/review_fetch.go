@@ -31,18 +31,6 @@ func runReviewFetch(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// We need an API token to access Phabricator through conduit
-	var apiToken string
-	if apiToken, err = backend.LocalConfig().ReadString("daedalean.taskmgr-api-token"); err != nil {
-		if apiToken, err = backend.GlobalConfig().ReadString("daedalean.taskmgr-api-token"); err != nil {
-			msg := `No Phabricator API token set. Please go to
-	https://p.daedalean.ai/settings/user/<YOUR_USERNAME_HERE>/page/apitokens/
-click on <Generate API Token>, and then paste the token into this command
-	git config --global --replace-all daedalean.taskmgr-api-token <PASTE_TOKEN_HERE>`
-			return errors.New(msg)
-		}
-	}
-
 	// If we already have review data for this Differential then just get any updates
 	// since then
 	var lastUpdate string
@@ -50,7 +38,7 @@ click on <Generate API Token>, and then paste the token into this command
 		lastUpdate = existingReview.LastTransaction
 	}
 
-	review, err := bug.FetchReviewInfo(apiToken, diffId, lastUpdate)
+	review, err := bug.FetchReviewInfo(diffId, lastUpdate)
 	if err != nil {
 		return err
 	}

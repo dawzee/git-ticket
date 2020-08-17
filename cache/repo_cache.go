@@ -15,8 +15,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/thought-machine/gonduit"
-	"github.com/thought-machine/gonduit/core"
 	"github.com/thought-machine/gonduit/requests"
 
 	"github.com/daedaleanai/git-ticket/bug"
@@ -1143,20 +1141,7 @@ func (c *RepoCache) getPhabId(email string) (string, error) {
 	// Assuming that the e-mail prefix is username on Phabricator
 	user := email[0:strings.Index(email, "@")]
 
-	// We need an API token to access Phabricator through conduit
-	var apiToken string
-	var err error
-	if apiToken, err = c.LocalConfig().ReadString("daedalean.taskmgr-api-token"); err != nil {
-		if apiToken, err = c.GlobalConfig().ReadString("daedalean.taskmgr-api-token"); err != nil {
-			msg := `No Phabricator API token set. Please go to
-	https://p.daedalean.ai/settings/user/<YOUR_USERNAME_HERE>/page/apitokens/
-click on <Generate API Token>, and then paste the token into this command
-	git config --global --replace-all daedalean.taskmgr-api-token <PASTE_TOKEN_HERE>`
-			return "", errors.New(msg)
-		}
-	}
-
-	phabClient, err := gonduit.Dial("https://p.daedalean.ai", &core.ClientOptions{APIToken: apiToken})
+	phabClient, err := repository.GetPhabClient()
 	if err != nil {
 		return "", err
 	}
