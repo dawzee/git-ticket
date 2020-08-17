@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thought-machine/gonduit"
-	"github.com/thought-machine/gonduit/core"
 	"github.com/thought-machine/gonduit/requests"
+
+	"github.com/daedaleanai/git-ticket/repository"
 )
 
 // PhapTransaction holds common transaction data
@@ -82,7 +82,7 @@ func (r ReviewInfo) LatestUserStatuses() map[string]ReviewStatus {
 // FetchReviewInfo exports review comments and status info from Phabricator for
 // the given differential ID and returns in a ReviewInfo struct. If a since
 // transaction ID is specified then only updates since then are returned.
-func FetchReviewInfo(apiToken string, id string, since string) (*ReviewInfo, error) {
+func FetchReviewInfo(id string, since string) (*ReviewInfo, error) {
 
 	if matched, _ := regexp.MatchString(`^D\d+$`, id); !matched {
 		return nil, fmt.Errorf("differential id '%s' unexpected format (Dnnn)", id)
@@ -90,7 +90,7 @@ func FetchReviewInfo(apiToken string, id string, since string) (*ReviewInfo, err
 
 	result := ReviewInfo{RevisionId: id}
 
-	phabClient, err := gonduit.Dial("https://p.daedalean.ai", &core.ClientOptions{APIToken: apiToken})
+	phabClient, err := repository.GetPhabClient()
 	if err != nil {
 		return nil, err
 	}

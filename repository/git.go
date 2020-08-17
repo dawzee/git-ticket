@@ -134,6 +134,27 @@ func NewGitRepo(path string, witnesser Witnesser) (*GitRepo, error) {
 	return repo, nil
 }
 
+// NewGitRepoNoInit returns a GitRepo instance for the given directory, does not
+// attempt to initialise clocks if not already done
+func NewGitRepoNoInit(path string) (*GitRepo, error) {
+	repo := &GitRepo{Path: path}
+
+	// Check the repo and retrieve the root path
+	stdout, err := repo.runGitCommand("rev-parse", "--git-dir")
+
+	// Now dir is fetched with "git rev-parse --git-dir". May be it can
+	// still return nothing in some cases. Then empty stdout check is
+	// kept.
+	if err != nil || stdout == "" {
+		return nil, ErrNotARepo
+	}
+
+	// Fix the path to be sure we are at the root
+	repo.Path = stdout
+
+	return repo, repo.LoadClocks()
+}
+
 // InitGitRepo create a new empty git repo at the given path
 func InitGitRepo(path string) (*GitRepo, error) {
 	repo := &GitRepo{Path: path + "/.git"}
