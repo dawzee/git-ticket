@@ -22,6 +22,17 @@ func (bug *Bug) EnsureIdentities(resolver identity.Resolver) error {
 
 			base.Author = i
 		}
+
+		// if it's an operation which sets the assignee we also need to
+		// resolve that
+		if setAss, ok := op.(*SetAssigneeOperation); ok {
+			i, err := resolver.ResolveIdentity(setAss.Assignee.Id())
+			if err != nil {
+				return err
+			}
+
+			setAss.Assignee = i
+		}
 	}
 	return nil
 }
