@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/pkg/errors"
 
@@ -179,14 +178,14 @@ func ChangeLabels(b Interface, author identity.Interface, unixTime int64, add, r
 		}
 
 		// if it's a workflow, check it exists
-		if strings.HasPrefix(str, "workflow:") {
+		if label.IsWorkflow() {
 			if newWorkflow = FindWorkflow(Label(str)); newWorkflow == nil {
 				results = append(results, LabelChangeResult{Label: label, Status: LabelChangeInvalidWorkflow})
 				continue
 			}
 			// if so, remove any existing workflows
 			for _, lbl := range snap.Labels {
-				if strings.HasPrefix(string(lbl), "workflow:") {
+				if lbl.IsWorkflow() {
 					remove = append(remove, string(lbl))
 				}
 			}
@@ -212,7 +211,7 @@ func ChangeLabels(b Interface, author identity.Interface, unixTime int64, add, r
 		}
 
 		// unless this is a workflow change, don't allow workflow labels to be removed
-		if newWorkflow == nil && strings.HasPrefix(str, "workflow:") {
+		if newWorkflow == nil && label.IsWorkflow() {
 			results = append(results, LabelChangeResult{Label: label, Status: LabelChangeInvalidWorkflow})
 			continue
 		}

@@ -2,7 +2,6 @@ package bug
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/daedaleanai/git-ticket/entity"
@@ -151,7 +150,7 @@ func (snap *Snapshot) GetUserChecklists(reviewer entity.Id) (map[Label]Checklist
 
 	// Only checklists named in the labels list are currently valid
 	for _, l := range snap.Labels {
-		if strings.HasPrefix(string(l), "checklist:") {
+		if l.IsChecklist() {
 			if snapshotChecklist, present := snap.Checklists[l][reviewer]; present {
 				checklists[l] = snapshotChecklist.Checklist
 			} else {
@@ -172,7 +171,7 @@ func (snap *Snapshot) GetChecklistCompoundStates() map[Label]ChecklistState {
 
 	// Only checklists named in the labels list are currently valid
 	for _, l := range snap.Labels {
-		if strings.HasPrefix(string(l), "checklist:") {
+		if l.IsChecklist() {
 			// default state is Pending
 			states[l] = Pending
 
@@ -201,7 +200,7 @@ func (snap *Snapshot) GetChecklistCompoundStates() map[Label]ChecklistState {
 // NextStates returns a slice of next possible states for the assigned workflow
 func (snap *Snapshot) NextStates() ([]Status, error) {
 	for _, l := range snap.Labels {
-		if strings.HasPrefix(string(l), "workflow:") {
+		if l.IsWorkflow() {
 			w := FindWorkflow(l)
 			if w == nil {
 				return nil, fmt.Errorf("invalid workflow %s", l)
@@ -216,7 +215,7 @@ func (snap *Snapshot) NextStates() ([]Status, error) {
 // destination from the current state for the assigned workflow
 func (snap *Snapshot) ValidateTransition(newStatus Status) error {
 	for _, l := range snap.Labels {
-		if strings.HasPrefix(string(l), "workflow:") {
+		if l.IsWorkflow() {
 			w := FindWorkflow(l)
 			if w == nil {
 				return fmt.Errorf("invalid workflow %s", l)
