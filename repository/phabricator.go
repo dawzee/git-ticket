@@ -67,10 +67,10 @@ func getPhabUrl() (string, error) {
 	return config.PhabUrl, nil
 }
 
-// GetPhabClient connects to gonduit and returns the connection ready to be
-// queried. Must be called within a git repo which has a .arconfig file
-// containing the phabricator.uri field and the Phabricator conduit API token
-// set in the git config daedalean.taskmgr-api-token.
+// GetPhabClient returns the connection ready to be queried. Must be called
+// within a git repo which has a .arconfig file containing the phabricator.uri
+// field and the Phabricator conduit API token set in the git config
+// daedalean.taskmgr-api-token.
 func GetPhabClient() (*gonduit.Conn, error) {
 	apiToken, err := getApiToken()
 	if err != nil {
