@@ -2,7 +2,6 @@ package bug
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/daedaleanai/git-ticket/entity"
@@ -17,8 +16,8 @@ type Snapshot struct {
 	Title        string
 	Comments     []Comment
 	Labels       []Label
-	Checklists   map[string]map[entity.Id]ChecklistSnapshot // label and reviewer id
-	Reviews      map[string]ReviewInfo                      // Phabricator Differential ID
+	Checklists   map[Label]map[entity.Id]ChecklistSnapshot // label and reviewer id
+	Reviews      map[string]ReviewInfo                     // Phabricator Differential ID
 	Author       identity.Interface
 	Assignee     identity.Interface
 	Actors       []identity.Interface
@@ -146,18 +145,17 @@ func (snap *Snapshot) HasAnyActor(ids ...entity.Id) bool {
 func (snap *Snapshot) IsAuthored() {}
 
 // GetUserChecklists returns a map of checklists associated with this snapshot for the given reviewer id
-func (snap *Snapshot) GetUserChecklists(reviewer entity.Id) (map[string]Checklist, error) {
-	checklists := make(map[string]Checklist)
+func (snap *Snapshot) GetUserChecklists(reviewer entity.Id) (map[Label]Checklist, error) {
+	checklists := make(map[Label]Checklist)
 
 	// Only checklists named in the labels list are currently valid
 	for _, l := range snap.Labels {
-		lblStr := string(l)
-		if strings.HasPrefix(lblStr, "checklist:") {
-			if snapshotChecklist, present := snap.Checklists[lblStr][reviewer]; present {
-				checklists[lblStr] = snapshotChecklist.Checklist
+		if l.IsChecklist() {
+			if snapshotChecklist, present := snap.Checklists[l][reviewer]; present {
+				checklists[l] = snapshotChecklist.Checklist
 			} else {
 				var err error
-				checklists[lblStr], err = GetChecklist(lblStr)
+				checklists[l], err = GetChecklist(l)
 				if err != nil {
 					return nil, err
 				}
@@ -168,18 +166,16 @@ func (snap *Snapshot) GetUserChecklists(reviewer entity.Id) (map[string]Checklis
 }
 
 // GetChecklistCompoundStates returns a map of checklist states mapped to label, associated with this snapshot
-func (snap *Snapshot) GetChecklistCompoundStates() map[string]ChecklistState {
-	states := make(map[string]ChecklistState)
+func (snap *Snapshot) GetChecklistCompoundStates() map[Label]ChecklistState {
+	states := make(map[Label]ChecklistState)
 
 	// Only checklists named in the labels list are currently valid
 	for _, l := range snap.Labels {
-		lblStr := l.String()
-
-		if strings.HasPrefix(lblStr, "checklist:") {
+		if l.IsChecklist() {
 			// default state is Pending
-			states[lblStr] = Pending
+			states[l] = Pending
 
-			clMap, present := snap.Checklists[lblStr]
+			clMap, present := snap.Checklists[l]
 			if present {
 				// at least one user has edited this checklist
 			ReviewsLoop:
@@ -188,11 +184,11 @@ func (snap *Snapshot) GetChecklistCompoundStates() map[string]ChecklistState {
 					switch clState {
 					case Failed:
 						// someone failed it, it's failed
-						states[lblStr] = Failed
+						states[l] = Failed
 						break ReviewsLoop
 					case Passed:
 						// someone passed it, and no-one failed it yet
-						states[lblStr] = Passed
+						states[l] = Passed
 					}
 				}
 			}
@@ -204,8 +200,8 @@ func (snap *Snapshot) GetChecklistCompoundStates() map[string]ChecklistState {
 // NextStates returns a slice of next possible states for the assigned workflow
 func (snap *Snapshot) NextStates() ([]Status, error) {
 	for _, l := range snap.Labels {
-		if strings.HasPrefix(string(l), "workflow:") {
-			w := FindWorkflow(string(l))
+		if l.IsWorkflow() {
+			w := FindWorkflow(l)
 			if w == nil {
 				return nil, fmt.Errorf("invalid workflow %s", l)
 			}
@@ -219,8 +215,8 @@ func (snap *Snapshot) NextStates() ([]Status, error) {
 // destination from the current state for the assigned workflow
 func (snap *Snapshot) ValidateTransition(newStatus Status) error {
 	for _, l := range snap.Labels {
-		if strings.HasPrefix(string(l), "workflow:") {
-			w := FindWorkflow(string(l))
+		if l.IsWorkflow() {
+			w := FindWorkflow(l)
 			if w == nil {
 				return fmt.Errorf("invalid workflow %s", l)
 			}

@@ -598,17 +598,29 @@ func (c *RepoCache) AllBugsIds() []entity.Id {
 //
 // Note: in the future, a proper label policy could be implemented where valid
 // labels are defined in a configuration file. Until that, the default behavior
-// is to return the list of labels already used.
+// is to return the list of labels already used, plus all defined checklists and
+// workflows.
 func (c *RepoCache) ValidLabels() []bug.Label {
 	c.muBug.RLock()
 	defer c.muBug.RUnlock()
 
 	set := map[bug.Label]interface{}{}
 
+	// all currently used labels
 	for _, excerpt := range c.bugExcerpts {
 		for _, l := range excerpt.Labels {
 			set[l] = nil
 		}
+	}
+
+	// all available workflow labels
+	for _, wf := range bug.GetWorkflowLabels() {
+		set[wf] = nil
+	}
+
+	// all available checklist labels
+	for _, cl := range bug.GetChecklistLabels() {
+		set[cl] = nil
 	}
 
 	result := make([]bug.Label, len(set))

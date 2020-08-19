@@ -48,9 +48,9 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 	var workflow string = "<NONE ASSIGNED>"
 
 	for _, lbl := range snapshot.Labels {
-		if strings.HasPrefix(lbl.String(), "workflow:") {
+		if lbl.IsWorkflow() {
 			workflow = strings.TrimPrefix(lbl.String(), "workflow:")
-		} else if strings.HasPrefix(lbl.String(), "checklist:") {
+		} else if lbl.IsChecklist() {
 			continue
 		} else {
 			labels = append(labels, lbl.String())

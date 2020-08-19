@@ -91,3 +91,11 @@ func (l Label) Validate() error {
 
 	return nil
 }
+
+func (l Label) IsChecklist() bool {
+	return strings.HasPrefix(string(l), "checklist:")
+}
+
+func (l Label) IsWorkflow() bool {
+	return strings.HasPrefix(string(l), "workflow:")
+}

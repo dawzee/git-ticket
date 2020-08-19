@@ -665,7 +665,7 @@ func (sb *showBug) review(g *gocui.Gui, v *gocui.View) error {
 	ticketChecklistLabels := make([]string, 0, len(ticketChecklists))
 
 	for k := range ticketChecklists {
-		ticketChecklistLabels = append(ticketChecklistLabels, k)
+		ticketChecklistLabels = append(ticketChecklistLabels, string(k))
 	}
 
 	// If there are multiple checklists associated with the ticket then give the
@@ -678,7 +678,7 @@ func (sb *showBug) review(g *gocui.Gui, v *gocui.View) error {
 		go func() {
 			selectedChecklistLabel := <-c
 
-			checklist, ok := ticketChecklists[selectedChecklistLabel]
+			checklist, ok := ticketChecklists[bug.Label(selectedChecklistLabel)]
 
 			if !ok {
 				ui.msgPopup.Activate(msgPopupErrorTitle, "Invalid checklist "+selectedChecklistLabel)
@@ -696,7 +696,7 @@ func (sb *showBug) review(g *gocui.Gui, v *gocui.View) error {
 	}
 
 	// Just the one checklist, so edit that
-	return reviewWithEditor(sb.bug, ticketChecklists[ticketChecklistLabels[0]])
+	return reviewWithEditor(sb.bug, ticketChecklists[bug.Label(ticketChecklistLabels[0])])
 }
 
 func (sb *showBug) setTitle(g *gocui.Gui, v *gocui.View) error {
