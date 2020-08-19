@@ -35,7 +35,7 @@ func runPull(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println(stdout)
+	fmt.Print(stdout)
 
 	fmt.Println("Merging data ...")
 
@@ -47,6 +47,13 @@ func runPull(cmd *cobra.Command, args []string) error {
 		if result.Status != entity.MergeStatusNothing {
 			fmt.Printf("%s: %s\n", result.Id.Human(), result)
 		}
+	}
+
+	fmt.Println("Updating configs ...")
+	stdout, err = backend.UpdateConfigs(remote)
+	fmt.Print(stdout)
+	if err != nil {
+		return err
 	}
 
 	return nil
