@@ -129,7 +129,7 @@ func GetConfig(repo repository.ClockedRepo, name string) ([]byte, error) {
 		refName)
 }
 
-// UpdateConfigs fetches config data from the remote and updates the local references
+// UpdateConfigs fetches config data from the remote and updates the local references.
 // If a config has been updated locally and on the server the local one is backed
 // up and replaced
 func UpdateConfigs(repo repository.ClockedRepo, remote string) (string, error) {
@@ -186,7 +186,7 @@ func UpdateConfigs(repo repository.ClockedRepo, remote string) (string, error) {
 			continue
 		}
 
-		// Remote commit is a child of the local commit
+		// Remote commit is a child of the local commit, local ref can be fast-forwarded to the remote commit
 		if ancestor == localCommit {
 			err = repo.UpdateRef(localRef, remoteCommit)
 			if err != nil {
@@ -194,26 +194,25 @@ func UpdateConfigs(repo repository.ClockedRepo, remote string) (string, error) {
 			}
 
 			out = out + fmt.Sprintf("%s: updated to %s\n", localRef, remoteCommit)
-			continue
+		} else {
+			// Local and remote configurations diverged, making a backup of the local version, adopting the remote version
+			localBak := fmt.Sprintf(configConflictRefPattern, refName, localCommit)
+			err = repo.CopyRef(localRef, localBak)
+			if err != nil {
+				return out, fmt.Errorf("failed to create a backup of ref %s: %s", localRef, err)
+			}
+
+			err = repo.UpdateRef(localRef, remoteCommit)
+			if err != nil {
+				return out, fmt.Errorf("failed to update ref %s: %s", localRef, err)
+			}
+
+			out = out + fmt.Sprintf("%s: updated to %s\n", localRef, remoteCommit)
+
+			// This sucks, but I am not sure how to do it better
+			out = out + fmt.Sprintf("Warning: Changes to your local config (%s) conflict with the remote config\n", refName)
+			out = out + fmt.Sprintf("Warning: and therefore have been discarded, backed up at: %s\n", localBak)
 		}
-
-		// Local and remote configurations diverged, making a backup of the local version, adopting the remote version
-		localBak := fmt.Sprintf(configConflictRefPattern, refName, localCommit)
-		err = repo.CopyRef(localRef, localBak)
-		if err != nil {
-			return out, fmt.Errorf("failed to create a backup of ref %s: %s", localRef, err)
-		}
-
-		err = repo.UpdateRef(localRef, remoteCommit)
-		if err != nil {
-			return out, fmt.Errorf("failed to update ref %s: %s", localRef, err)
-		}
-
-		out = out + fmt.Sprintf("%s: updated to %s\n", localRef, remoteCommit)
-
-		// This sucks, but I am not sure how to do it better
-		out = out + fmt.Sprintf("Warning: Changes to your local config (%s) are not based on based on remote config\n", refName)
-		out = out + fmt.Sprintf("Warning: and therefore have been discarded, backed up at: %s\n", localBak)
 	}
 
 	return out, nil
