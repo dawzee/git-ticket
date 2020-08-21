@@ -1,6 +1,7 @@
 package bug
 
 import (
+	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/identity"
 )
 
@@ -10,28 +11,41 @@ import (
 func (bug *Bug) EnsureIdentities(resolver identity.Resolver) error {
 	it := NewOperationIterator(bug)
 
+	// only resolve each identity once
+	found := make(map[entity.Id]identity.Interface)
+
 	for it.Next() {
 		op := it.Value()
 		base := op.base()
 
 		if stub, ok := base.Author.(*identity.IdentityStub); ok {
-			id, err := resolver.ResolveIdentity(stub.Id())
-			if err != nil {
-				return err
+			entity := stub.Id()
+
+			if _, ok := found[entity]; !ok {
+				id, err := resolver.ResolveIdentity(entity)
+				if err != nil {
+					return err
+				}
+				found[entity] = id
 			}
 
-			base.Author = id
+			base.Author = found[entity]
 		}
 
 		// if it's an operation which sets the assignee we also need to
 		// resolve that
 		if setAss, ok := op.(*SetAssigneeOperation); ok {
-			id, err := resolver.ResolveIdentity(setAss.Assignee.Id())
-			if err != nil {
-				return err
+			entity := setAss.Assignee.Id()
+
+			if _, ok := found[entity]; !ok {
+				id, err := resolver.ResolveIdentity(entity)
+				if err != nil {
+					return err
+				}
+				found[entity] = id
 			}
 
-			setAss.Assignee = id
+			setAss.Assignee = found[entity]
 		}
 	}
 	return nil
