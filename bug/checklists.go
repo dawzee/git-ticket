@@ -15,7 +15,7 @@ import (
 type ChecklistState int
 
 const (
-	Pending ChecklistState = iota
+	TBD ChecklistState = iota
 	Passed
 	Failed
 	NotApplicable
@@ -107,14 +107,29 @@ func GetChecklistLabels() []Label {
 
 func (s ChecklistState) String() string {
 	switch s {
-	case Pending:
-		return "PENDING"
+	case TBD:
+		return "TBD"
 	case Passed:
 		return "PASSED"
 	case Failed:
 		return "FAILED"
 	case NotApplicable:
-		return "NOT APPLICABLE"
+		return "NA"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func (s ChecklistState) ShortString() string {
+	switch s {
+	case TBD:
+		return "TBD"
+	case Passed:
+		return "P"
+	case Failed:
+		return "F"
+	case NotApplicable:
+		return "NA"
 	default:
 		return "UNKNOWN"
 	}
@@ -122,14 +137,14 @@ func (s ChecklistState) String() string {
 
 func (s ChecklistState) ColorString() string {
 	switch s {
-	case Pending:
-		return colors.Blue("PENDING")
+	case TBD:
+		return colors.Blue("TBD")
 	case Passed:
 		return colors.Green("PASSED")
 	case Failed:
 		return colors.Red("FAILED")
 	case NotApplicable:
-		return "NOT APPLICABLE"
+		return "NA"
 	default:
 		return "UNKNOWN"
 	}
@@ -138,22 +153,21 @@ func (s ChecklistState) ColorString() string {
 func StateFromString(str string) (ChecklistState, error) {
 	cleaned := strings.ToLower(strings.TrimSpace(str))
 
-	switch cleaned {
-	case "pending":
-		return Pending, nil
-	case "passed":
+	if strings.HasPrefix("tbd", cleaned) {
+		return TBD, nil
+	} else if strings.HasPrefix("passed", cleaned) {
 		return Passed, nil
-	case "failed":
+	} else if strings.HasPrefix("failed", cleaned) {
 		return Failed, nil
-	case "not applicable":
+	} else if strings.HasPrefix("na", cleaned) {
 		return NotApplicable, nil
-	default:
-		return 0, fmt.Errorf("unknown state")
 	}
+
+	return 0, fmt.Errorf("unknown state")
 }
 
 func (s ChecklistState) Validate() error {
-	if s < Pending || s > NotApplicable {
+	if s < TBD || s > NotApplicable {
 		return fmt.Errorf("invalid")
 	}
 
@@ -162,14 +176,14 @@ func (s ChecklistState) Validate() error {
 
 // CompoundState returns an overall state for the checklist given the state of
 // each of the questions. If any of the questions are Failed then the checklist
-// Failed, else if any are Pending it's Pending, else it's Passed
+// Failed, else if any are TBD it's TBD, else it's Passed
 func (c Checklist) CompoundState() ChecklistState {
-	var pendingCount, failedCount int
+	var tbdCount, failedCount int
 	for _, s := range c.Sections {
 		for _, q := range s.Questions {
 			switch q.State {
-			case Pending:
-				pendingCount++
+			case TBD:
+				tbdCount++
 			case Failed:
 				failedCount++
 			}
@@ -179,11 +193,11 @@ func (c Checklist) CompoundState() ChecklistState {
 	if failedCount > 0 {
 		return Failed
 	}
-	// None have Failed, but if any are still Pending return that
-	if pendingCount > 0 {
-		return Pending
+	// None have Failed, but if any are still TBD return that
+	if tbdCount > 0 {
+		return TBD
 	}
-	// None Failed or Pending, all questions are NotApplicable or Passed, return Passed
+	// None Failed or TBD, all questions are NotApplicable or Passed, return Passed
 	return Passed
 }
 

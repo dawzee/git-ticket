@@ -245,10 +245,16 @@ func BugTitleEditorInput(repo repository.RepoCommon, preTitle string) (string, e
 
 const checklistPreamble = `# %s
 
-# Leave lines starting with '#' unchanged. States in [] can be: PENDING, PASSED, FAILED or NOT APPLICABLE. Anything between will be saved as a comment.
+# Leave lines starting with '#' unchanged.
+# States in [] can be: TBD, PASSED, FAILED or NA. Abbreviations accepted.
+# Any text entered between the question and state will be saved as a comment.
 # Saving an empty (or invalid format) aborts the operation.
 
 `
+
+const checklistBackupFile = ".git-ticket-checklist.backup"
+
+const checklistParseFailMessage = "invalid checklist saved to " + checklistBackupFile
 
 // ChecklistEditorInput will open the default editor in the terminal with a
 // checklist for the user to fill. The file is then processed to extract the
@@ -263,12 +269,17 @@ func ChecklistEditorInput(repo repository.RepoCommon, checklist bug.Checklist) (
 		for qn, q := range s.Questions {
 			template = template + fmt.Sprintf("# %d.%d : %s\n", sn+1, qn+1, q.Question)
 			template = template + fmt.Sprintf("%s\n", q.Comment)
-			template = template + fmt.Sprintf("[%s]\n", q.State)
+			template = template + fmt.Sprintf("[%s]\n", q.State.ShortString())
 		}
 	}
 
 	raw, err := launchEditorWithTemplate(repo, checklistFilename, template)
 
+	if err != nil {
+		return false, err
+	}
+
+	err = ioutil.WriteFile(checklistBackupFile, []byte(raw), 0644)
 	if err != nil {
 		return false, err
 	}
@@ -291,24 +302,24 @@ func ChecklistEditorInput(repo repository.RepoCommon, checklist bug.Checklist) (
 				matches := questionSearch.FindStringSubmatch(line)
 				if thisS, err := strconv.Atoi(matches[1]); err != nil || thisS != nextS {
 					// unexpected section number
-					return checklistChanged, fmt.Errorf("checklist parse error (section number), line %d", l)
+					return checklistChanged, fmt.Errorf("checklist parse error (section number), line %d. %s", l, checklistParseFailMessage)
 				}
 				if thisQ, err := strconv.Atoi(matches[2]); err != nil || thisQ != nextQ {
 					// unexpected question number
-					return checklistChanged, fmt.Errorf("checklist parse error (question number), line %d", l)
+					return checklistChanged, fmt.Errorf("checklist parse error (question number), line %d. %s", l, checklistParseFailMessage)
 				}
 				inComment = true
 				commentText = ""
 			} else if nextQ != 1 {
 				// next question line missing
-				return checklistChanged, fmt.Errorf("checklist parse error (question line), line %d", l)
+				return checklistChanged, fmt.Errorf("checklist parse error (question line), line %d. %s", l, checklistParseFailMessage)
 			}
 		} else {
 			if stateSearch.MatchString(line) {
 				newState, err := bug.StateFromString(stateSearch.FindStringSubmatch(line)[1])
 				if err != nil {
 					// something is wrong with the format
-					return checklistChanged, fmt.Errorf("checklist parse error (invalid state), line %d", l)
+					return checklistChanged, fmt.Errorf("checklist parse error (invalid state), line %d. %s", l, checklistParseFailMessage)
 				}
 				// check and save comment
 				strippedCommentText := strings.TrimSuffix(commentText, "\n")
@@ -335,8 +346,10 @@ func ChecklistEditorInput(repo repository.RepoCommon, checklist bug.Checklist) (
 	}
 
 	if nextS != len(checklist.Sections)+1 {
-		return checklistChanged, fmt.Errorf("checklist parse error, section/question count")
+		return checklistChanged, fmt.Errorf("checklist parse error, section/question count. %s", checklistParseFailMessage)
 	}
+
+	os.Remove(checklistBackupFile)
 
 	return checklistChanged, nil
 }

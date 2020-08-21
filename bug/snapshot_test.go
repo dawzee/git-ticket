@@ -59,19 +59,19 @@ func TestSnapshot_GetChecklistCompoundStates(t *testing.T) {
 
 	assert.Equal(t, snapshot.GetChecklistCompoundStates(), map[Label]ChecklistState{"checklist:XYZ": Passed})
 
-	// one review has left an answer pending, should still be overall pass
-	snapshot.Checklists["checklist:XYZ"]["456"].Checklist.Sections[0].Questions[1].State = Pending
+	// one review has left an answer TBD, should still be overall pass
+	snapshot.Checklists["checklist:XYZ"]["456"].Checklist.Sections[0].Questions[1].State = TBD
 	assert.Equal(t, snapshot.GetChecklistCompoundStates(), map[Label]ChecklistState{"checklist:XYZ": Passed})
 
-	// both reviewers have left an answer pending, should be overall pending
-	snapshot.Checklists["checklist:XYZ"]["123"].Checklist.Sections[1].Questions[1].State = Pending
-	assert.Equal(t, snapshot.GetChecklistCompoundStates(), map[Label]ChecklistState{"checklist:XYZ": Pending})
+	// both reviewers have left an answer TBD, should be overall TBD
+	snapshot.Checklists["checklist:XYZ"]["123"].Checklist.Sections[1].Questions[1].State = TBD
+	assert.Equal(t, snapshot.GetChecklistCompoundStates(), map[Label]ChecklistState{"checklist:XYZ": TBD})
 
 	// one review has left an answer failed, should be overall fail
 	snapshot.Checklists["checklist:XYZ"]["456"].Checklist.Sections[0].Questions[1].State = Failed
 	assert.Equal(t, snapshot.GetChecklistCompoundStates(), map[Label]ChecklistState{"checklist:XYZ": Failed})
 
-	// the default state for an unreviewed checklist is pending
+	// the default state for an unreviewed checklist is TBD
 	snapshot.Labels = append(snapshot.Labels, "checklist:ABC")
-	assert.Equal(t, snapshot.GetChecklistCompoundStates(), map[Label]ChecklistState{"checklist:XYZ": Failed, "checklist:ABC": Pending})
+	assert.Equal(t, snapshot.GetChecklistCompoundStates(), map[Label]ChecklistState{"checklist:XYZ": Failed, "checklist:ABC": TBD})
 }

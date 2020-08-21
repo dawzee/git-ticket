@@ -172,8 +172,8 @@ func (snap *Snapshot) GetChecklistCompoundStates() map[Label]ChecklistState {
 	// Only checklists named in the labels list are currently valid
 	for _, l := range snap.Labels {
 		if l.IsChecklist() {
-			// default state is Pending
-			states[l] = Pending
+			// default state is TBD
+			states[l] = TBD
 
 			clMap, present := snap.Checklists[l]
 			if present {
