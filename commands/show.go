@@ -16,6 +16,7 @@ import (
 
 var (
 	showFieldsQuery string
+	timelineFlag    bool
 )
 
 func runShowBug(cmd *cobra.Command, args []string) error {
@@ -33,14 +34,10 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 
 	snapshot := b.Snapshot()
 
-	// process assignee
-	assigneeName := "UNASSIGNED"
-	if snapshot.Assignee != nil {
-		assignee, err := backend.ResolveIdentityExcerpt(snapshot.Assignee.Id())
-		if err != nil {
-			return err
-		}
-		assigneeName = assignee.DisplayName()
+	if timelineFlag {
+		printTimeline(snapshot)
+
+		return nil
 	}
 
 	// process labels
@@ -66,7 +63,7 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 	if showFieldsQuery != "" {
 		switch showFieldsQuery {
 		case "assignee":
-			fmt.Printf("%s\n", assigneeName)
+			fmt.Printf("%s\n", snapshot.Assignee.DisplayName())
 		case "author":
 			fmt.Printf("%s\n", firstComment.Author.DisplayName())
 		case "authorEmail":
@@ -152,7 +149,7 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 		colors.Yellow(snapshot.Status),
 		colors.Cyan(snapshot.Id().Human()),
 		snapshot.Title,
-		colors.Blue(assigneeName),
+		colors.Blue(snapshot.Assignee.DisplayName()),
 	)
 
 	fmt.Printf("%s opened this issue %s\n\n",
@@ -233,6 +230,47 @@ func runShowBug(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// printTimeline walks the snapshot timeline for the selected bug and prints
+// some information
+func printTimeline(snapshot *bug.Snapshot) {
+	for _, op := range snapshot.Timeline {
+		switch op := op.(type) {
+		case *bug.AddCommentTimelineItem:
+			fmt.Printf("(%s) %-20s: commented \"%s\"\n", op.CreatedAt.Time().Format(time.RFC822), op.Author.DisplayName(), op.Message)
+
+		case *bug.CreateTimelineItem:
+			fmt.Printf("(%s) %-20s: created \"%s\"\n", op.CreatedAt.Time().Format(time.RFC822), op.Author.DisplayName(), snapshot.Title)
+
+		case *bug.LabelChangeTimelineItem:
+			if len(op.Added) > 0 {
+				fmt.Printf("(%s) %-20s: added labels ", op.UnixTime.Time().Format(time.RFC822), op.Author.DisplayName())
+				for _, label := range op.Added {
+					fmt.Printf("\"%s\" ", label)
+				}
+				fmt.Println()
+			}
+
+			if len(op.Removed) > 0 {
+				fmt.Printf("(%s) %-20s: removed labels ", op.UnixTime.Time().Format(time.RFC822), op.Author.DisplayName())
+				for _, label := range op.Removed {
+					fmt.Printf("\"%s\" ", label)
+				}
+				fmt.Println()
+			}
+
+		case *bug.SetAssigneeTimelineItem:
+			fmt.Printf("(%s) %-20s: set assignee \"%s\"\n", op.UnixTime.Time().Format(time.RFC822), op.Author.DisplayName(), op.Assignee.DisplayName())
+
+		case *bug.SetChecklistTimelineItem:
+			fmt.Printf("(%s) %-20s: edited \"%s\"\n", op.UnixTime.Time().Format(time.RFC822), op.Author.DisplayName(), op.Checklist.Title)
+
+		case *bug.SetStatusTimelineItem:
+			fmt.Printf("(%s) %-20s: \"%s\"\n", op.UnixTime.Time().Format(time.RFC822), op.Author.DisplayName(), op.Status.Action())
+		}
+
+	}
+}
+
 var showCmd = &cobra.Command{
 	Use:     "show [<id>]",
 	Short:   "Display the details of a ticket.",
@@ -242,6 +280,9 @@ var showCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(showCmd)
+	showCmd.Flags().BoolVarP(&timelineFlag, "timeline", "t", false,
+		"Output the timeline of the ticket",
+	)
 	showCmd.Flags().StringVarP(&showFieldsQuery, "field", "f", "",
 		"Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,humanId,id,labels,reviews,shortId,status,title,workflow,actors,participants]")
 }
