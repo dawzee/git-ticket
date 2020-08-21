@@ -15,23 +15,23 @@ func (bug *Bug) EnsureIdentities(resolver identity.Resolver) error {
 		base := op.base()
 
 		if stub, ok := base.Author.(*identity.IdentityStub); ok {
-			i, err := resolver.ResolveIdentity(stub.Id())
+			id, err := resolver.ResolveIdentity(stub.Id())
 			if err != nil {
 				return err
 			}
 
-			base.Author = i
+			base.Author = id
 		}
 
 		// if it's an operation which sets the assignee we also need to
 		// resolve that
 		if setAss, ok := op.(*SetAssigneeOperation); ok {
-			i, err := resolver.ResolveIdentity(setAss.Assignee.Id())
+			id, err := resolver.ResolveIdentity(setAss.Assignee.Id())
 			if err != nil {
 				return err
 			}
 
-			setAss.Assignee = i
+			setAss.Assignee = id
 		}
 	}
 	return nil
