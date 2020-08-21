@@ -31,8 +31,8 @@ func TestChecklists_ChecklistCompoundState(t *testing.T) {
 	testChecklist.Sections[0].Questions[0].State = NotApplicable
 	assert.Equal(t, testChecklist.CompoundState(), Passed)
 
-	testChecklist.Sections[0].Questions[1].State = Pending
-	assert.Equal(t, testChecklist.CompoundState(), Pending)
+	testChecklist.Sections[0].Questions[1].State = TBD
+	assert.Equal(t, testChecklist.CompoundState(), TBD)
 
 	testChecklist.Sections[0].Questions[2].State = Failed
 	assert.Equal(t, testChecklist.CompoundState(), Failed)
