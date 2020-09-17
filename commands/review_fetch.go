@@ -60,7 +60,7 @@ func runReviewFetch(env *Env, args []string) error {
 		return err
 	}
 
-	if len(review.Comments) == 0 && len(review.Statuses) == 0 {
+	if len(review.Updates) == 0 {
 		fmt.Printf("No updates to save for %s, aborting\n", diffId)
 		return nil
 	}

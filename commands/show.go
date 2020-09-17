@@ -56,9 +56,16 @@ func runShow(env *Env, opts showOptions, args []string) error {
 	snap := b.Snapshot()
 
 	if opts.timeline {
-		printTimeline(env, snap)
+		for _, op := range snap.Timeline {
+			env.out.Println(op)
+		}
 
 		return nil
+	}
+
+	assigneeName := "UNASSIGNED"
+	if snap.Assignee != nil {
+		assigneeName = snap.Assignee.DisplayName()
 	}
 
 	if len(snap.Comments) == 0 {
@@ -69,7 +76,7 @@ func runShow(env *Env, opts showOptions, args []string) error {
 	if opts.fields != "" {
 		switch opts.fields {
 		case "assignee":
-			env.out.Printf("%s\n", snap.Assignee.DisplayName())
+			env.out.Printf("%s\n", assigneeName)
 		case "author":
 			env.out.Printf("%s\n", snap.Author.DisplayName())
 		case "authorEmail":
@@ -97,34 +104,21 @@ func runShow(env *Env, opts showOptions, args []string) error {
 		case "reviews":
 			for _, r := range snap.Reviews {
 				// The Differential ID
-				env.out.Printf("==== %s ====\n", r.RevisionId)
+				env.out.Printf("==== %s:%s (%s) ====\n", r.RevisionId, r.Title, r.LatestOverallStatus())
 
 				// The statuses
-				for u, s := range r.LatestUserStatuses() {
-					var userName string
-
-					if user, err := env.backend.ResolveIdentityPhabID(u); err != nil {
-						userName = "???"
-					} else {
-						userName = user.DisplayName()
-					}
-
-					env.out.Printf("(%s) %-20s: %s\n", time.Unix(s.Timestamp, 0).Format(time.RFC822), userName, s.Status)
+				for _, s := range r.LatestUserStatuses() {
+					env.out.Printf("(%s) %-20s: %s\n", time.Unix(s.Timestamp, 0).Format(time.RFC822), s.Author.DisplayName(), s.Status)
 				}
 
 				// Output all the comments
-				env.out.Printf("---- %d comments ----\n", len(r.Comments))
+				env.out.Printf("---- comments ----\n")
 
-				for _, c := range r.Comments {
-					var userName string
-
-					if user, err := env.backend.ResolveIdentityPhabID(c.User); err != nil {
-						userName = "???"
-					} else {
-						userName = user.DisplayName()
+				for _, c := range r.Updates {
+					if c.Type != bug.CommentTransaction {
+						continue
 					}
-
-					env.out.Printf("(%s) %-20s: %s\n", time.Unix(c.Timestamp, 0).Format(time.RFC822), userName, c.OneLineComment())
+					env.out.Printf("(%s) %-20s: %s\n", time.Unix(c.Timestamp, 0).Format(time.RFC822), c.Author.DisplayName(), c.OneLineComment())
 				}
 			}
 		case "labels":
@@ -181,12 +175,17 @@ func workflowAndLabels(snap *bug.Snapshot) (string, []string) {
 }
 
 func showDefaultFormatter(env *Env, snapshot *bug.Snapshot) error {
+	assigneeName := "UNASSIGNED"
+	if snapshot.Assignee != nil {
+		assigneeName = snapshot.Assignee.DisplayName()
+	}
+
 	// Header
 	env.out.Printf("%s [%s] %s - %s\n\n",
 		colors.Cyan(snapshot.Id().Human()),
 		colors.Yellow(snapshot.Status),
 		snapshot.Title,
-		colors.Blue(snapshot.Assignee.DisplayName()),
+		colors.Blue(assigneeName),
 	)
 
 	env.out.Printf("%s opened this issue %s\n",
@@ -203,7 +202,7 @@ func showDefaultFormatter(env *Env, snapshot *bug.Snapshot) error {
 	env.out.Printf("workflow: %s\n", workflow)
 
 	// Checklists
-	env.out.Printf("checklists:\n")
+	var checklistStates []string
 	for clLabel, st := range snapshot.GetChecklistCompoundStates() {
 		cl, err := bug.GetChecklist(clLabel)
 
@@ -211,14 +210,16 @@ func showDefaultFormatter(env *Env, snapshot *bug.Snapshot) error {
 			return err
 		}
 
-		env.out.Printf("- %s : %s\n", cl.Title, st.ColorString())
+		checklistStates = append(checklistStates, fmt.Sprintf("%s (%s)", cl.Title, st.ColorString()))
 	}
+	env.out.Printf("checklists: %s\n", strings.Join(checklistStates, ", "))
 
 	// Reviews
-	env.out.Printf("reviews:\n")
+	var reviewStates []string
 	for _, review := range snapshot.Reviews {
-		env.out.Printf("- %s (%d comments)\n", review.RevisionId, len(review.Comments))
+		reviewStates = append(reviewStates, fmt.Sprintf("%s (%s)", review.RevisionId, review.LatestOverallStatus()))
 	}
+	env.out.Printf("reviews: %s\n", strings.Join(reviewStates, ", "))
 
 	// Labels
 	env.out.Printf("labels: %s\n",
@@ -270,47 +271,6 @@ func showDefaultFormatter(env *Env, snapshot *bug.Snapshot) error {
 	}
 
 	return nil
-}
-
-// printTimeline walks the snapshot timeline for the selected bug and prints
-// some information
-func printTimeline(env *Env, snapshot *bug.Snapshot) {
-	for _, op := range snapshot.Timeline {
-		switch op := op.(type) {
-		case *bug.AddCommentTimelineItem:
-			env.out.Printf("(%s) %-20s: commented \"%s\"\n", op.CreatedAt.Time().Format(time.RFC822), op.Author.DisplayName(), op.Message)
-
-		case *bug.CreateTimelineItem:
-			env.out.Printf("(%s) %-20s: created \"%s\"\n", op.CreatedAt.Time().Format(time.RFC822), op.Author.DisplayName(), snapshot.Title)
-
-		case *bug.LabelChangeTimelineItem:
-			if len(op.Added) > 0 {
-				env.out.Printf("(%s) %-20s: added labels ", op.UnixTime.Time().Format(time.RFC822), op.Author.DisplayName())
-				for _, label := range op.Added {
-					env.out.Printf("\"%s\" ", label)
-				}
-				fmt.Println()
-			}
-
-			if len(op.Removed) > 0 {
-				env.out.Printf("(%s) %-20s: removed labels ", op.UnixTime.Time().Format(time.RFC822), op.Author.DisplayName())
-				for _, label := range op.Removed {
-					env.out.Printf("\"%s\" ", label)
-				}
-				fmt.Println()
-			}
-
-		case *bug.SetAssigneeTimelineItem:
-			env.out.Printf("(%s) %-20s: set assignee \"%s\"\n", op.UnixTime.Time().Format(time.RFC822), op.Author.DisplayName(), op.Assignee.DisplayName())
-
-		case *bug.SetChecklistTimelineItem:
-			env.out.Printf("(%s) %-20s: edited \"%s\"\n", op.UnixTime.Time().Format(time.RFC822), op.Author.DisplayName(), op.Checklist.Title)
-
-		case *bug.SetStatusTimelineItem:
-			env.out.Printf("(%s) %-20s: \"%s\"\n", op.UnixTime.Time().Format(time.RFC822), op.Author.DisplayName(), op.Status.Action())
-		}
-
-	}
 }
 
 type JSONBugSnapshot struct {

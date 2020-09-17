@@ -3,6 +3,7 @@ package bug
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/identity"
@@ -112,6 +113,13 @@ func NewAddCommentOp(author identity.Interface, unixTime int64, message string, 
 // CreateTimelineItem replace a AddComment operation in the Timeline and hold its edition history
 type AddCommentTimelineItem struct {
 	CommentTimelineItem
+}
+
+func (a AddCommentTimelineItem) String() string {
+	return fmt.Sprintf("(%s) %-20s: commented \"%s\"",
+		a.CreatedAt.Time().Format(time.RFC822),
+		a.Author.DisplayName(),
+		a.Message)
 }
 
 // Sign post method for gqlgen

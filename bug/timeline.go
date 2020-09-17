@@ -1,7 +1,9 @@
 package bug
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/identity"
@@ -12,6 +14,10 @@ import (
 type TimelineItem interface {
 	// ID return the identifier of the item
 	Id() entity.Id
+	// When returns the time of the item
+	When() timestamp.Timestamp
+	// Timeline specific print message
+	String() string
 }
 
 // CommentHistoryStep hold one version of a message in the history
@@ -54,6 +60,17 @@ func NewCommentTimelineItem(ID entity.Id, comment Comment) CommentTimelineItem {
 
 func (c *CommentTimelineItem) Id() entity.Id {
 	return c.id
+}
+
+func (c CommentTimelineItem) When() timestamp.Timestamp {
+	return c.CreatedAt
+}
+
+func (c CommentTimelineItem) String() string {
+	return fmt.Sprintf("(%s) %-20s: %s",
+		c.CreatedAt.Time().Format(time.RFC822),
+		c.Author.DisplayName(),
+		c.Message)
 }
 
 // Append will append a new comment in the history and update the other values

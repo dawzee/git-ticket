@@ -11,6 +11,7 @@ func newReviewCommand() *cobra.Command {
 	}
 
 	cmd.AddCommand(newReviewChecklistCommand())
+	cmd.AddCommand(newReviewClearCommand())
 	cmd.AddCommand(newReviewFetchCommand())
 
 	return cmd

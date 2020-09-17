@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/identity"
@@ -125,6 +126,17 @@ type SetTitleTimelineItem struct {
 
 func (s SetTitleTimelineItem) Id() entity.Id {
 	return s.id
+}
+
+func (s SetTitleTimelineItem) When() timestamp.Timestamp {
+	return s.UnixTime
+}
+
+func (s SetTitleTimelineItem) String() string {
+	return fmt.Sprintf("(%s) %-20s: set title %s",
+		s.UnixTime.Time().Format(time.RFC822),
+		s.Author.DisplayName(),
+		s.Title)
 }
 
 // Sign post method for gqlgen

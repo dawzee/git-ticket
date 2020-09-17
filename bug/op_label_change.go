@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -149,6 +151,30 @@ type LabelChangeTimelineItem struct {
 
 func (l LabelChangeTimelineItem) Id() entity.Id {
 	return l.id
+}
+
+func (l LabelChangeTimelineItem) When() timestamp.Timestamp {
+	return l.UnixTime
+}
+
+func (l LabelChangeTimelineItem) String() string {
+	var output strings.Builder
+	if len(l.Added) > 0 {
+		output.WriteString("added labels ")
+		for _, label := range l.Added {
+			output.WriteString("\"" + string(label) + "\" ")
+		}
+	}
+	if len(l.Removed) > 0 {
+		output.WriteString("removed labels ")
+		for _, label := range l.Removed {
+			output.WriteString("\"" + string(label) + "\" ")
+		}
+	}
+	return fmt.Sprintf("(%s) %-20s: %s",
+		l.UnixTime.Time().Format(time.RFC822),
+		l.Author.DisplayName(),
+		output.String())
 }
 
 // Sign post method for gqlgen

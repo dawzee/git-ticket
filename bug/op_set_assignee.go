@@ -2,6 +2,8 @@ package bug
 
 import (
 	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/identity"
@@ -99,6 +101,17 @@ type SetAssigneeTimelineItem struct {
 
 func (s SetAssigneeTimelineItem) Id() entity.Id {
 	return s.id
+}
+
+func (s SetAssigneeTimelineItem) When() timestamp.Timestamp {
+	return s.UnixTime
+}
+
+func (s SetAssigneeTimelineItem) String() string {
+	return fmt.Sprintf("(%s) %-20s: set assignee \"%s\"",
+		s.UnixTime.Time().Format(time.RFC822),
+		s.Author.DisplayName(),
+		s.Assignee.DisplayName())
 }
 
 // Sign post method for gqlgen

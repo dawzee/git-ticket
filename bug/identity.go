@@ -47,6 +47,23 @@ func (bug *Bug) EnsureIdentities(resolver identity.Resolver) error {
 
 			setAss.Assignee = found[entity]
 		}
+
+		// and for review operations, each of the update authors
+		if setRev, ok := op.(*SetReviewOperation); ok {
+			for i, u := range setRev.Review.Updates {
+				entity := u.Author.Id()
+
+				if _, ok := found[entity]; !ok {
+					id, err := resolver.ResolveIdentity(entity)
+					if err != nil {
+						return err
+					}
+					found[entity] = id
+				}
+
+				setRev.Review.Updates[i].Author = found[entity]
+			}
+		}
 	}
 	return nil
 }
