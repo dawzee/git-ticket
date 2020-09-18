@@ -4,21 +4,37 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/daedaleanai/git-ticket/bug"
-	"github.com/daedaleanai/git-ticket/cache"
-	"github.com/daedaleanai/git-ticket/commands/select"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
+
+	"github.com/daedaleanai/git-ticket/bug"
+	_select "github.com/daedaleanai/git-ticket/commands/select"
 )
 
-func runReviewFetch(cmd *cobra.Command, args []string) error {
-	backend, err := cache.NewRepoCache(repo)
-	if err != nil {
-		return err
-	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
+func newReviewFetchCommand() *cobra.Command {
+	env := newEnv()
 
+	cmd := &cobra.Command{
+		Use:   "fetch DIFF-ID [ID]",
+		Short: "Get Differential Revision data from Phabricator and store in a ticket.",
+		Long: `fetch stores Phabricator Differential Revision data in a ticket.
+
+The command takes a Phabricator Differential Revision ID (e.g. D1234) and queries the
+Phabricator server for any associated comments or status changes, any resulting data
+is stored with the selected ticket. Subsequent calls with the same ID will fetch and
+store any updates since the previous call. Multiple Revisions can be stored with a
+ticket by running the command with different IDs.
+
+`,
+		PreRunE: loadRepoEnsureUser(env),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runReviewFetch(env, args)
+		},
+	}
+
+	return cmd
+}
+
+func runReviewFetch(env *Env, args []string) error {
 	if len(args) < 1 {
 		return errors.New("no DiffID supplied")
 	}
@@ -26,7 +42,7 @@ func runReviewFetch(cmd *cobra.Command, args []string) error {
 	diffId := args[0]
 	args = args[1:]
 
-	b, args, err := _select.ResolveBug(backend, args)
+	b, args, err := _select.ResolveBug(env.backend, args)
 	if err != nil {
 		return err
 	}
@@ -54,26 +70,4 @@ func runReviewFetch(cmd *cobra.Command, args []string) error {
 	}
 
 	return b.Commit()
-}
-
-var reviewFetchCmd = &cobra.Command{
-	Use:   "fetch <DiffID> [<id>]",
-	Short: "Get Differential Revision data from Phabricator and store in a ticket.",
-	Long: `fetch stores Phabricator Differential Revision data in a ticket.
-
-The command takes a Phabricator Differential Revision ID (e.g. D1234) and queries the
-Phabricator server for any associated comments or status changes, any resulting data
-is stored with the selected ticket. Subsequent calls with the same ID will fetch and
-store any updates since the previous call. Multiple Revisions can be stored with a
-ticket by running the command with different IDs.
-
-`,
-	PreRunE: loadRepoEnsureUser,
-	RunE:    runReviewFetch,
-}
-
-func init() {
-	reviewCmd.AddCommand(reviewFetchCmd)
-
-	reviewFetchCmd.Flags().SortFlags = false
 }

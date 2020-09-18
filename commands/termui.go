@@ -1,31 +1,28 @@
 package commands
 
 import (
-	"github.com/daedaleanai/git-ticket/cache"
-	"github.com/daedaleanai/git-ticket/termui"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
+
+	"github.com/daedaleanai/git-ticket/termui"
 )
 
-func runTermUI(cmd *cobra.Command, args []string) error {
-	backend, err := cache.NewRepoCache(repo)
-	if err != nil {
-		return err
+func newTermUICommand() *cobra.Command {
+	env := newEnv()
+
+	cmd := &cobra.Command{
+		Use:      "termui",
+		Aliases:  []string{"tui"},
+		Short:    "Launch the terminal UI.",
+		PreRunE:  loadBackendEnsureUser(env),
+		PostRunE: closeBackend(env),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runTermUI(env)
+		},
 	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
 
-	return termui.Run(backend)
+	return cmd
 }
 
-var termUICmd = &cobra.Command{
-	Use:     "termui",
-	Aliases: []string{"tui"},
-	Short:   "Launch the terminal UI.",
-	PreRunE: loadRepoEnsureUser,
-	RunE:    runTermUI,
-}
-
-func init() {
-	RootCmd.AddCommand(termUICmd)
+func runTermUI(env *Env) error {
+	return termui.Run(env.backend)
 }

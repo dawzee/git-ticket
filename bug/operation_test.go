@@ -8,7 +8,6 @@ import (
 
 	"github.com/daedaleanai/git-ticket/identity"
 	"github.com/daedaleanai/git-ticket/repository"
-	"github.com/daedaleanai/git-ticket/util/git"
 )
 
 func TestValidate(t *testing.T) {
@@ -46,7 +45,7 @@ func TestValidate(t *testing.T) {
 		},
 
 		NewCreateOp(rene, unix, "multi\nline", "message", nil),
-		NewCreateOp(rene, unix, "title", "message", []git.Hash{git.Hash("invalid")}),
+		NewCreateOp(rene, unix, "title", "message", []repository.Hash{repository.Hash("invalid")}),
 		NewCreateOp(rene, unix, "title\u001b", "message", nil),
 		NewCreateOp(rene, unix, "title", "message\u001b", nil),
 		NewSetTitleOp(rene, unix, "multi\nline", "title1"),
@@ -54,7 +53,7 @@ func TestValidate(t *testing.T) {
 		NewSetTitleOp(rene, unix, "title\u001b", "title2"),
 		NewSetTitleOp(rene, unix, "title", "title2\u001b"),
 		NewAddCommentOp(rene, unix, "message\u001b", nil),
-		NewAddCommentOp(rene, unix, "message", []git.Hash{git.Hash("invalid")}),
+		NewAddCommentOp(rene, unix, "message", []repository.Hash{repository.Hash("invalid")}),
 		NewSetStatusOp(rene, unix, 1000),
 		NewSetStatusOp(rene, unix, 0),
 		NewLabelChangeOperation(rene, unix, []Label{}, []Label{}),
@@ -81,7 +80,7 @@ func TestMetadata(t *testing.T) {
 
 func TestID(t *testing.T) {
 	repo := repository.CreateTestRepo(false)
-	defer repository.CleanupTestRepos(t, repo)
+	defer repository.CleanupTestRepos(repo)
 
 	repos := []repository.ClockedRepo{
 		repository.NewMockRepoForTest(),

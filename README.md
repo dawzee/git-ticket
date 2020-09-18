@@ -14,7 +14,7 @@
 
 `git-ticket` is a bug tracker that:
 
-- **is fully embeded in git**: you only need your git repository to have a bug tracker
+- **is fully embedded in git**: you only need your git repository to have a bug tracker
 - **is distributed**: use your normal git remote to collaborate, push and pull your bugs!
 - **works offline**: in a plane or under the sea? Keep reading and writing bugs!
 - **prevents vendor lock-in**: your usual service is down or went bad? You already have a full backup.
@@ -38,6 +38,37 @@ If it's not done already, add the golang binary directory in your PATH:
 export PATH=$PATH:$(go env GOROOT)/bin:$(go env GOPATH)/bin
 ```
 
+
+## Workflows
+
+There are multiple ways to use `git-bug`:
+
+<details><summary>Native workflow</summary>
+<p align="center">
+    <img src="misc/diagrams/native_workflow.png" alt="Native workflow">
+</p>
+
+This is the pure `git-bug` experience. In a similar fashion as with code, use `git bug push` and `git bug pull` to push and pull your bugs between git remotes and collaborate with your teammate. 
+
+</details>
+
+<details><summary>Bridge workflow</summary>
+<p align="center">
+    <img src="misc/diagrams/bridge_workflow.png" alt="Bridge workflow">
+</p>
+
+As `git-bug` has bridges with other bug-trackers, you can use it as your personal local remote interface. Sync with `git bug bridge pull` and `git bug bridge push`, work from your terminal, integrate into your editor, it's up to you. And it works offline !
+
+</details>
+
+<details><summary>Web UI workflow (WIP)</summary>
+<p align="center">
+    <img src="misc/diagrams/webui-workflow.png" alt="Web UI workflow">
+</p>
+
+Often, projects needs to have their bug-tracker public and accept editions from anyone facing a problem. To support this workflow, `git-bug` aims to have the web UI accept external OAuth authentication and act as a public portal. However the web UI is not up to speed for that yet. Contribution are very much welcome!
+
+</details>
 
 ## CLI usage
 
@@ -98,7 +129,7 @@ You can launch a rich Web UI with `git ticket webui`.
 
 This web UI is entirely packed inside the same go binary and serve static content through a localhost http server.
 
-The web UI interact with the backend through a GraphQL API. The schema is available [here](graphql/).
+The web UI interact with the backend through a GraphQL API. The schema is available [here](api/graphql/schema).
 
 ## Bridges
 

@@ -1,28 +1,45 @@
 package commands
 
 import (
-	"github.com/daedaleanai/git-ticket/bug"
-	"github.com/daedaleanai/git-ticket/cache"
-	"github.com/daedaleanai/git-ticket/commands/select"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
+
+	"github.com/daedaleanai/git-ticket/bug"
+	_select "github.com/daedaleanai/git-ticket/commands/select"
 )
 
-func runStatusSet(cmd *cobra.Command, args []string) error {
+func newStatusSetCommands() <-chan *cobra.Command {
+	env := newEnv()
 
-	backend, err := cache.NewRepoCache(repo)
+	cmds := make(chan *cobra.Command)
+	go func() {
+		for s := bug.FirstStatus; s <= bug.LastStatus; s++ {
+			cmd := &cobra.Command{
+				Use:     s.String() + " ID",
+				Short:   "Ticket is " + s.Action() + ".",
+				Args:    cobra.ExactArgs(1),
+				PreRunE: loadRepoEnsureUser(env),
+				RunE: func(cmd *cobra.Command, args []string) error {
+					return runStatusSet(env, args, s)
+				},
+			}
+
+			// Use the Annotations map to store new status
+			cmd.Annotations = make(map[string]string)
+			cmd.Annotations["status"] = s.String()
+
+			cmds <- cmd
+		}
+		close(cmds)
+	}()
+
+	return cmds
+}
+
+func runStatusSet(env *Env, args []string, s bug.Status) error {
+	b, args, err := _select.ResolveBug(env.backend, args)
 	if err != nil {
 		return err
 	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
-
-	b, args, err := _select.ResolveBug(backend, args)
-	if err != nil {
-		return err
-	}
-
-	s, _ := bug.StatusFromString(cmd.Annotations["status"])
 
 	_, err = b.SetStatus(s)
 	if err != nil {
@@ -30,29 +47,4 @@ func runStatusSet(cmd *cobra.Command, args []string) error {
 	}
 
 	return b.Commit()
-}
-
-var setStatusCmds [bug.NumStatuses]*cobra.Command
-
-func init() {
-
-	s := bug.FirstStatus
-
-	for c := 0; c < bug.NumStatuses; c++ {
-
-		setStatusCmds[c] = &cobra.Command{
-			Use:     s.String() + " [<id>]",
-			Short:   "Ticket is " + s.Action() + ".",
-			PreRunE: loadRepoEnsureUser,
-			RunE:    runStatusSet,
-		}
-
-		// Use the Annotations map to store new status
-		setStatusCmds[c].Annotations = make(map[string]string)
-		setStatusCmds[c].Annotations["status"] = s.String()
-
-		statusCmd.AddCommand(setStatusCmds[c])
-
-		s++
-	}
 }

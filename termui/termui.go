@@ -7,12 +7,11 @@ import (
 	"github.com/awesome-gocui/gocui"
 	"github.com/pkg/errors"
 
-	errors2 "github.com/go-errors/errors"
-
 	"github.com/daedaleanai/git-ticket/bug"
 	"github.com/daedaleanai/git-ticket/cache"
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/input"
+	"github.com/daedaleanai/git-ticket/query"
 )
 
 var errTerminateMainloop = errors.New("terminate gocui mainloop")
@@ -67,8 +66,12 @@ func Run(cache *cache.RepoCache) error {
 
 	err := <-ui.gError
 
+	type errorStack interface {
+		ErrorStack() string
+	}
+
 	if err != nil && err != gocui.ErrQuit {
-		if e, ok := err.(*errors2.Error); ok {
+		if e, ok := err.(errorStack); ok {
 			fmt.Println(e.ErrorStack())
 		}
 		return err
@@ -370,12 +373,12 @@ func editQueryWithEditor(bt *bugTable) error {
 
 	bt.queryStr = queryStr
 
-	query, err := cache.ParseQuery(queryStr)
+	q, err := query.Parse(queryStr)
 
 	if err != nil {
 		ui.msgPopup.Activate(msgPopupErrorTitle, err.Error())
 	} else {
-		bt.query = query
+		bt.query = q
 	}
 
 	initGui(nil)

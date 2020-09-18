@@ -3,14 +3,13 @@ package repository
 import (
 	"testing"
 
-	"github.com/daedaleanai/git-ticket/util/git"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTreeEntryFormat(t *testing.T) {
-
 	entries := []TreeEntry{
-		{Blob, git.Hash("a85730cf5287d40a1e32d3a671ba2296c73387cb"), "name"},
-		{Tree, git.Hash("a85730cf5287d40a1e32d3a671ba2296c73387cb"), "name"},
+		{Blob, Hash("a85730cf5287d40a1e32d3a671ba2296c73387cb"), "name"},
+		{Tree, Hash("a85730cf5287d40a1e32d3a671ba2296c73387cb"), "name"},
 	}
 
 	for _, entry := range entries {
@@ -26,10 +25,7 @@ func TestTreeEntryParse(t *testing.T) {
 
 	for _, line := range lines {
 		_, err := ParseTreeEntry(line)
-
-		if err != nil {
-			t.Fatal(err)
-		}
+		assert.NoError(t, err)
 	}
 
 }

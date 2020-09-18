@@ -3,40 +3,55 @@ package commands
 import (
 	"fmt"
 
-	"github.com/daedaleanai/git-ticket/cache"
-	"github.com/daedaleanai/git-ticket/input"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+
+	"github.com/daedaleanai/git-ticket/input"
 )
 
-var configFile string
+type configSetOptions struct {
+	file string
+}
 
-func runConfigSet(cmd *cobra.Command, args []string) error {
-	backend, err := cache.NewRepoCache(repo)
-	if err != nil {
-		return err
+func newConfigSetCommand() *cobra.Command {
+	env := newEnv()
+	options := configSetOptions{}
+
+	cmd := &cobra.Command{
+		Use:      "set CONFIG",
+		Short:    "Set the named configuration data.",
+		Args:     cobra.ExactArgs(1),
+		PostRunE: closeBackend(env),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runConfigSet(env, options, args)
+		},
 	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
 
-	if len(args) != 1 {
-		return fmt.Errorf("only one config can be set at a time")
-	}
+	flags := cmd.Flags()
+	flags.SortFlags = false
 
+	flags.StringVarP(&options.file, "file", "F", "",
+		"Take the config from the given file. Use - to read the config from the standard input",
+	)
+
+	return cmd
+}
+
+func runConfigSet(env *Env, options configSetOptions, args []string) error {
 	var configData string
 
-	if configFile != "" {
-		configData, err = input.ConfigFileInput(configFile)
+	if options.file != "" {
+		var err error
+		configData, err = input.ConfigFileInput(options.file)
 		if err != nil {
 			return err
 		}
 	} else {
-		currentConfig, err := backend.GetConfig(args[0])
+		currentConfig, err := env.backend.GetConfig(args[0])
 		if err != nil {
-			configData, err = input.ConfigEditorInput(backend, "")
+			configData, err = input.ConfigEditorInput(env.backend, "")
 		} else {
-			configData, err = input.ConfigEditorInput(backend, string(currentConfig))
+			configData, err = input.ConfigEditorInput(env.backend, string(currentConfig))
 		}
 		if err == input.ErrEmptyMessage {
 			fmt.Println("Empty config, aborting.")
@@ -54,22 +69,5 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("the config data you specified is not properly formatted: %s", err)
 	}
 
-	return backend.SetConfig(args[0], []byte(configData))
-}
-
-var configSetCmd = &cobra.Command{
-	Use:     "set <name>",
-	Short:   "Set the named configuration data.",
-	PreRunE: loadRepo,
-	RunE:    runConfigSet,
-}
-
-func init() {
-	configCmd.AddCommand(configSetCmd)
-
-	configSetCmd.Flags().SortFlags = false
-
-	configSetCmd.Flags().StringVarP(&configFile, "file", "F", "",
-		"Take the config from the given file. Use - to read the config from the standard input",
-	)
+	return env.backend.SetConfig(args[0], []byte(configData))
 }

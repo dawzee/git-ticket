@@ -8,30 +8,26 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 
-	"github.com/daedaleanai/git-ticket/util/git"
 	"github.com/daedaleanai/git-ticket/util/lamport"
 )
 
 const (
-	createClockFile = "/git-bug/create-clock"
-	editClockFile   = "/git-bug/edit-clock"
-)
-
-var (
-	// ErrNotARepo is the error returned when the git repo root wan't be found
-	ErrNotARepo = errors.New("not a git repository")
+	clockPath = "git-bug"
 )
 
 var _ ClockedRepo = &GitRepo{}
+var _ TestedRepo = &GitRepo{}
 
 // GitRepo represents an instance of a (local) git repository.
 type GitRepo struct {
-	Path        string
-	createClock *lamport.Persisted
-	editClock   *lamport.Persisted
+	path string
+
+	clocksMutex sync.Mutex
+	clocks      map[string]lamport.Clock
 }
 
 // LocalConfig give access to the repository scoped configuration
@@ -46,19 +42,14 @@ func (repo *GitRepo) GlobalConfig() Config {
 
 // Run the given git command with the given I/O reader/writers, returning an error if it fails.
 func (repo *GitRepo) runGitCommandWithIO(stdin io.Reader, stdout, stderr io.Writer, args ...string) error {
-	repopath := repo.Path
-	if repopath == ".git" {
-		// seeduvax> trangely the git command sometimes fail for very unknown
-		// reason wihtout this replacement.
-		// observed with rev-list command when git-bug is called from git
-		// hook script, even the same command with same args runs perfectly
-		// when called directly from the same hook script.
-		repopath = ""
-	}
-	// fmt.Printf("[%s] Running git %s\n", repopath, strings.Join(args, " "))
+	// make sure that the working directory for the command
+	// always exist, in particular when running "git init".
+	path := strings.TrimSuffix(repo.path, ".git")
+
+	// fmt.Printf("[%s] Running git %s\n", path, strings.Join(args, " "))
 
 	cmd := exec.Command("git", args...)
-	cmd.Dir = repopath
+	cmd.Dir = path
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
@@ -93,8 +84,11 @@ func (repo *GitRepo) runGitCommand(args ...string) (string, error) {
 
 // NewGitRepo determines if the given working directory is inside of a git repository,
 // and returns the corresponding GitRepo instance if it is.
-func NewGitRepo(path string, witnesser Witnesser) (*GitRepo, error) {
-	repo := &GitRepo{Path: path}
+func NewGitRepo(path string, clockLoaders []ClockLoader) (*GitRepo, error) {
+	repo := &GitRepo{
+		path:   path,
+		clocks: make(map[string]lamport.Clock),
+	}
 
 	// Check the repo and retrieve the root path
 	stdout, err := repo.runGitCommand("rev-parse", "--git-dir")
@@ -107,28 +101,22 @@ func NewGitRepo(path string, witnesser Witnesser) (*GitRepo, error) {
 	}
 
 	// Fix the path to be sure we are at the root
-	repo.Path = stdout
+	repo.path = stdout
 
-	err = repo.LoadClocks()
-
-	if err != nil {
-		// No clock yet, trying to initialize them
-		err = repo.createClocks()
-		if err != nil {
-			return nil, err
+	for _, loader := range clockLoaders {
+		allExist := true
+		for _, name := range loader.Clocks {
+			if _, err := repo.getClock(name); err != nil {
+				allExist = false
+			}
 		}
 
-		err = witnesser(repo)
-		if err != nil {
-			return nil, err
+		if !allExist {
+			err = loader.Witnesser(repo)
+			if err != nil {
+				return nil, err
+			}
 		}
-
-		err = repo.WriteClocks()
-		if err != nil {
-			return nil, err
-		}
-
-		return repo, nil
 	}
 
 	return repo, nil
@@ -137,7 +125,10 @@ func NewGitRepo(path string, witnesser Witnesser) (*GitRepo, error) {
 // NewGitRepoNoInit returns a GitRepo instance for the given directory, does not
 // attempt to initialise clocks if not already done
 func NewGitRepoNoInit(path string) (*GitRepo, error) {
-	repo := &GitRepo{Path: path}
+	repo := &GitRepo{
+		path:   path,
+		clocks: make(map[string]lamport.Clock),
+	}
 
 	// Check the repo and retrieve the root path
 	stdout, err := repo.runGitCommand("rev-parse", "--git-dir")
@@ -150,20 +141,19 @@ func NewGitRepoNoInit(path string) (*GitRepo, error) {
 	}
 
 	// Fix the path to be sure we are at the root
-	repo.Path = stdout
+	repo.path = stdout
 
-	return repo, repo.LoadClocks()
+	return repo, nil
 }
 
 // InitGitRepo create a new empty git repo at the given path
 func InitGitRepo(path string) (*GitRepo, error) {
-	repo := &GitRepo{Path: path + "/.git"}
-	err := repo.createClocks()
-	if err != nil {
-		return nil, err
+	repo := &GitRepo{
+		path:   path + "/.git",
+		clocks: make(map[string]lamport.Clock),
 	}
 
-	_, err = repo.runGitCommand("init", path)
+	_, err := repo.runGitCommand("init", path)
 	if err != nil {
 		return nil, err
 	}
@@ -173,13 +163,12 @@ func InitGitRepo(path string) (*GitRepo, error) {
 
 // InitBareGitRepo create a new --bare empty git repo at the given path
 func InitBareGitRepo(path string) (*GitRepo, error) {
-	repo := &GitRepo{Path: path}
-	err := repo.createClocks()
-	if err != nil {
-		return nil, err
+	repo := &GitRepo{
+		path:   path,
+		clocks: make(map[string]lamport.Clock),
 	}
 
-	_, err = repo.runGitCommand("init", "--bare", path)
+	_, err := repo.runGitCommand("init", "--bare", path)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +178,7 @@ func InitBareGitRepo(path string) (*GitRepo, error) {
 
 // GetPath returns the path to the repo.
 func (repo *GitRepo) GetPath() string {
-	return repo.Path
+	return repo.path
 }
 
 // GetUserName returns the name the the user has used to configure git
@@ -254,16 +243,16 @@ func (repo *GitRepo) PushRefs(remote string, refSpec string) (string, error) {
 }
 
 // StoreData will store arbitrary data and return the corresponding hash
-func (repo *GitRepo) StoreData(data []byte) (git.Hash, error) {
+func (repo *GitRepo) StoreData(data []byte) (Hash, error) {
 	var stdin = bytes.NewReader(data)
 
 	stdout, err := repo.runGitCommandWithStdin(stdin, "hash-object", "--stdin", "-w")
 
-	return git.Hash(stdout), err
+	return Hash(stdout), err
 }
 
 // ReadData will attempt to read arbitrary data from the given hash
-func (repo *GitRepo) ReadData(hash git.Hash) ([]byte, error) {
+func (repo *GitRepo) ReadData(hash Hash) ([]byte, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
@@ -277,7 +266,7 @@ func (repo *GitRepo) ReadData(hash git.Hash) ([]byte, error) {
 }
 
 // StoreTree will store a mapping key-->Hash as a Git tree
-func (repo *GitRepo) StoreTree(entries []TreeEntry) (git.Hash, error) {
+func (repo *GitRepo) StoreTree(entries []TreeEntry) (Hash, error) {
 	buffer := prepareTreeEntries(entries)
 
 	stdout, err := repo.runGitCommandWithStdin(&buffer, "mktree")
@@ -286,20 +275,20 @@ func (repo *GitRepo) StoreTree(entries []TreeEntry) (git.Hash, error) {
 		return "", err
 	}
 
-	return git.Hash(stdout), nil
+	return Hash(stdout), nil
 }
 
 // StoreCommit will store a Git commit with the given Git tree
-func (repo *GitRepo) StoreCommit(treeHash git.Hash) (git.Hash, error) {
+func (repo *GitRepo) StoreCommit(treeHash Hash) (Hash, error) {
 	return repo.storeCommitRaw(treeHash)
 }
 
 // StoreCommitWithParent will store a Git commit with the given Git tree
-func (repo *GitRepo) StoreCommitWithParent(treeHash git.Hash, parent git.Hash) (git.Hash, error) {
+func (repo *GitRepo) StoreCommitWithParent(treeHash Hash, parent Hash) (Hash, error) {
 	return repo.storeCommitRaw(treeHash, "-p", string(parent))
 }
 
-func (repo *GitRepo) storeCommitRaw(treeHash git.Hash, extraArgs ...string) (git.Hash, error) {
+func (repo *GitRepo) storeCommitRaw(treeHash Hash, extraArgs ...string) (Hash, error) {
 	args := []string{"commit-tree"}
 
 	// `git commit-tree` uses user.signingkey and gpg.program, but not commit.gpgsign.
@@ -327,12 +316,19 @@ func (repo *GitRepo) storeCommitRaw(treeHash git.Hash, extraArgs ...string) (git
 		return "", err
 	}
 
-	return git.Hash(stdout), nil
+	return Hash(stdout), nil
 }
 
 // UpdateRef will create or update a Git reference
-func (repo *GitRepo) UpdateRef(ref string, hash git.Hash) error {
+func (repo *GitRepo) UpdateRef(ref string, hash Hash) error {
 	_, err := repo.runGitCommand("update-ref", ref, string(hash))
+
+	return err
+}
+
+// RemoveRef will remove a Git reference
+func (repo *GitRepo) RemoveRef(ref string) error {
+	_, err := repo.runGitCommand("update-ref", "-d", ref)
 
 	return err
 }
@@ -373,13 +369,13 @@ func (repo *GitRepo) CopyRef(source string, dest string) error {
 }
 
 // Resolve the reference to the commit hash it represents
-func (repo *GitRepo) ResolveRef(ref string) (git.Hash, error) {
+func (repo *GitRepo) ResolveRef(ref string) (Hash, error) {
 	stdout, err := repo.runGitCommand("show-ref", "-s", ref)
-	return git.Hash(stdout), err
+	return Hash(stdout), err
 }
 
 // ListCommits will return the list of commit hashes of a ref, in chronological order
-func (repo *GitRepo) ListCommits(ref string) ([]git.Hash, error) {
+func (repo *GitRepo) ListCommits(ref string) ([]Hash, error) {
 	stdout, err := repo.runGitCommand("rev-list", "--first-parent", "--reverse", ref)
 
 	if err != nil {
@@ -388,17 +384,17 @@ func (repo *GitRepo) ListCommits(ref string) ([]git.Hash, error) {
 
 	split := strings.Split(stdout, "\n")
 
-	casted := make([]git.Hash, len(split))
+	casted := make([]Hash, len(split))
 	for i, line := range split {
-		casted[i] = git.Hash(line)
+		casted[i] = Hash(line)
 	}
 
 	return casted, nil
 
 }
 
-// ListEntries will return the list of entries in a Git tree
-func (repo *GitRepo) ListEntries(hash git.Hash) ([]TreeEntry, error) {
+// ReadTree will return the list of entries in a Git tree
+func (repo *GitRepo) ReadTree(hash Hash) ([]TreeEntry, error) {
 	stdout, err := repo.runGitCommand("ls-tree", string(hash))
 
 	if err != nil {
@@ -409,25 +405,71 @@ func (repo *GitRepo) ListEntries(hash git.Hash) ([]TreeEntry, error) {
 }
 
 // FindCommonAncestor will return the last common ancestor of two chain of commit
-func (repo *GitRepo) FindCommonAncestor(hash1 git.Hash, hash2 git.Hash) (git.Hash, error) {
+func (repo *GitRepo) FindCommonAncestor(hash1 Hash, hash2 Hash) (Hash, error) {
 	stdout, err := repo.runGitCommand("merge-base", string(hash1), string(hash2))
 
 	if err != nil {
 		return "", err
 	}
 
-	return git.Hash(stdout), nil
+	return Hash(stdout), nil
 }
 
 // GetTreeHash return the git tree hash referenced in a commit
-func (repo *GitRepo) GetTreeHash(commit git.Hash) (git.Hash, error) {
+func (repo *GitRepo) GetTreeHash(commit Hash) (Hash, error) {
 	stdout, err := repo.runGitCommand("rev-parse", string(commit)+"^{tree}")
 
 	if err != nil {
 		return "", err
 	}
 
-	return git.Hash(stdout), nil
+	return Hash(stdout), nil
+}
+
+// GetOrCreateClock return a Lamport clock stored in the Repo.
+// If the clock doesn't exist, it's created.
+func (repo *GitRepo) GetOrCreateClock(name string) (lamport.Clock, error) {
+	c, err := repo.getClock(name)
+	if err == nil {
+		return c, nil
+	}
+	if err != ErrClockNotExist {
+		return nil, err
+	}
+
+	repo.clocksMutex.Lock()
+	defer repo.clocksMutex.Unlock()
+
+	p := path.Join(repo.path, clockPath, name+"-clock")
+
+	c, err = lamport.NewPersistedClock(p)
+	if err != nil {
+		return nil, err
+	}
+
+	repo.clocks[name] = c
+	return c, nil
+}
+
+func (repo *GitRepo) getClock(name string) (lamport.Clock, error) {
+	repo.clocksMutex.Lock()
+	defer repo.clocksMutex.Unlock()
+
+	if c, ok := repo.clocks[name]; ok {
+		return c, nil
+	}
+
+	p := path.Join(repo.path, clockPath, name+"-clock")
+
+	c, err := lamport.LoadPersistedClock(p)
+	if err == nil {
+		repo.clocks[name] = c
+		return c, nil
+	}
+	if err == lamport.ErrClockNotExist {
+		return nil, ErrClockNotExist
+	}
+	return nil, err
 }
 
 // AddRemote add a new remote to the repository
@@ -436,87 +478,4 @@ func (repo *GitRepo) AddRemote(name string, url string) error {
 	_, err := repo.runGitCommand("remote", "add", name, url)
 
 	return err
-}
-
-func (repo *GitRepo) createClocks() error {
-	createPath := path.Join(repo.Path, createClockFile)
-	createClock, err := lamport.NewPersisted(createPath)
-	if err != nil {
-		return err
-	}
-
-	editPath := path.Join(repo.Path, editClockFile)
-	editClock, err := lamport.NewPersisted(editPath)
-	if err != nil {
-		return err
-	}
-
-	repo.createClock = createClock
-	repo.editClock = editClock
-
-	return nil
-}
-
-// LoadClocks read the clocks values from the on-disk repo
-func (repo *GitRepo) LoadClocks() error {
-	createClock, err := lamport.LoadPersisted(repo.GetPath() + createClockFile)
-	if err != nil {
-		return err
-	}
-
-	editClock, err := lamport.LoadPersisted(repo.GetPath() + editClockFile)
-	if err != nil {
-		return err
-	}
-
-	repo.createClock = createClock
-	repo.editClock = editClock
-	return nil
-}
-
-// WriteClocks write the clocks values into the repo
-func (repo *GitRepo) WriteClocks() error {
-	err := repo.createClock.Write()
-	if err != nil {
-		return err
-	}
-
-	err = repo.editClock.Write()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// CreateTime return the current value of the creation clock
-func (repo *GitRepo) CreateTime() lamport.Time {
-	return repo.createClock.Time()
-}
-
-// CreateTimeIncrement increment the creation clock and return the new value.
-func (repo *GitRepo) CreateTimeIncrement() (lamport.Time, error) {
-	return repo.createClock.Increment()
-}
-
-// EditTime return the current value of the edit clock
-func (repo *GitRepo) EditTime() lamport.Time {
-	return repo.editClock.Time()
-}
-
-// EditTimeIncrement increment the edit clock and return the new value.
-func (repo *GitRepo) EditTimeIncrement() (lamport.Time, error) {
-	return repo.editClock.Increment()
-}
-
-// WitnessCreate witness another create time and increment the corresponding clock
-// if needed.
-func (repo *GitRepo) WitnessCreate(time lamport.Time) error {
-	return repo.createClock.Witness(time)
-}
-
-// WitnessEdit witness another edition time and increment the corresponding clock
-// if needed.
-func (repo *GitRepo) WitnessEdit(time lamport.Time) error {
-	return repo.editClock.Witness(time)
 }

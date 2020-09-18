@@ -6,13 +6,16 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/daedaleanai/git-ticket/util/git"
 	"github.com/daedaleanai/git-ticket/util/lamport"
 )
 
 var (
 	ErrNoConfigEntry       = errors.New("no config entry for the given key")
 	ErrMultipleConfigEntry = errors.New("multiple config entry for the given key")
+	// ErrNotARepo is the error returned when the git repo root wan't be found
+	ErrNotARepo = errors.New("not a git repository")
+	// ErrClockNotExist is the error returned when a clock can't be found
+	ErrClockNotExist = errors.New("clock doesn't exist")
 )
 
 // RepoConfig access the configuration of a repository
@@ -54,22 +57,34 @@ type Repo interface {
 	PushRefs(remote string, refSpec string) (string, error)
 
 	// StoreData will store arbitrary data and return the corresponding hash
-	StoreData(data []byte) (git.Hash, error)
+	StoreData(data []byte) (Hash, error)
 
 	// ReadData will attempt to read arbitrary data from the given hash
-	ReadData(hash git.Hash) ([]byte, error)
+	ReadData(hash Hash) ([]byte, error)
 
 	// StoreTree will store a mapping key-->Hash as a Git tree
-	StoreTree(mapping []TreeEntry) (git.Hash, error)
+	StoreTree(mapping []TreeEntry) (Hash, error)
+
+	// ReadTree will return the list of entries in a Git tree
+	ReadTree(hash Hash) ([]TreeEntry, error)
 
 	// StoreCommit will store a Git commit with the given Git tree
-	StoreCommit(treeHash git.Hash) (git.Hash, error)
+	StoreCommit(treeHash Hash) (Hash, error)
 
 	// StoreCommit will store a Git commit with the given Git tree
-	StoreCommitWithParent(treeHash git.Hash, parent git.Hash) (git.Hash, error)
+	StoreCommitWithParent(treeHash Hash, parent Hash) (Hash, error)
+
+	// GetTreeHash return the git tree hash referenced in a commit
+	GetTreeHash(commit Hash) (Hash, error)
+
+	// FindCommonAncestor will return the last common ancestor of two chain of commit
+	FindCommonAncestor(commit1 Hash, commit2 Hash) (Hash, error)
 
 	// UpdateRef will create or update a Git reference
-	UpdateRef(ref string, hash git.Hash) error
+	UpdateRef(ref string, hash Hash) error
+
+	// RemoveRef will remove a Git reference
+	RemoveRef(ref string) error
 
 	// ListRefs will return a list of Git ref matching the given refspec
 	ListRefs(refspec string) ([]string, error)
@@ -81,55 +96,32 @@ type Repo interface {
 	CopyRef(source string, dest string) error
 
 	// Resolve the reference to the commit hash it represents
-	ResolveRef(ref string) (git.Hash, error)
+	ResolveRef(ref string) (Hash, error)
 
 	// ListCommits will return the list of tree hashes of a ref, in chronological order
-	ListCommits(ref string) ([]git.Hash, error)
-
-	// ListEntries will return the list of entries in a Git tree
-	ListEntries(hash git.Hash) ([]TreeEntry, error)
-
-	// FindCommonAncestor will return the last common ancestor of two chain of commit
-	FindCommonAncestor(hash1 git.Hash, hash2 git.Hash) (git.Hash, error)
-
-	// GetTreeHash return the git tree hash referenced in a commit
-	GetTreeHash(commit git.Hash) (git.Hash, error)
+	ListCommits(ref string) ([]Hash, error)
 }
 
 // ClockedRepo is a Repo that also has Lamport clocks
 type ClockedRepo interface {
 	Repo
 
-	// LoadClocks read the clocks values from the on-disk repo
-	LoadClocks() error
-
-	// WriteClocks write the clocks values into the repo
-	WriteClocks() error
-
-	// CreateTime return the current value of the creation clock
-	CreateTime() lamport.Time
-
-	// CreateTimeIncrement increment the creation clock and return the new value.
-	CreateTimeIncrement() (lamport.Time, error)
-
-	// EditTime return the current value of the edit clock
-	EditTime() lamport.Time
-
-	// EditTimeIncrement increment the edit clock and return the new value.
-	EditTimeIncrement() (lamport.Time, error)
-
-	// WitnessCreate witness another create time and increment the corresponding
-	// clock if needed.
-	WitnessCreate(time lamport.Time) error
-
-	// WitnessEdit witness another edition time and increment the corresponding
-	// clock if needed.
-	WitnessEdit(time lamport.Time) error
+	// GetOrCreateClock return a Lamport clock stored in the Repo.
+	// If the clock doesn't exist, it's created.
+	GetOrCreateClock(name string) (lamport.Clock, error)
 }
 
-// Witnesser is a function that will initialize the clocks of a repo
-// from scratch
-type Witnesser func(repo ClockedRepo) error
+// ClockLoader hold which logical clock need to exist for an entity and
+// how to create them if they don't.
+type ClockLoader struct {
+	// Clocks hold the name of all the clocks this loader deal with.
+	// Those clocks will be checked when the repo load. If not present or broken,
+	// Witnesser will be used to create them.
+	Clocks []string
+	// Witnesser is a function that will initialize the clocks of a repo
+	// from scratch
+	Witnesser func(repo ClockedRepo) error
+}
 
 func prepareTreeEntries(entries []TreeEntry) bytes.Buffer {
 	var buffer bytes.Buffer
@@ -160,4 +152,14 @@ func readTreeEntries(s string) ([]TreeEntry, error) {
 	}
 
 	return casted, nil
+}
+
+// TestedRepo is an extended ClockedRepo with function for testing only
+type TestedRepo interface {
+	ClockedRepo
+
+	// AddRemote add a new remote to the repository
+	AddRemote(name string, url string) error
+
+	runGitCommand(args ...string) (string, error)
 }

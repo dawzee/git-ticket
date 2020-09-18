@@ -90,7 +90,7 @@ func StatusFromString(str string) (Status, error) {
 	case "done":
 		return DoneStatus, nil
 	default:
-		return 0, fmt.Errorf("unknown status")
+		return 0, fmt.Errorf("unknown status: %s", cleaned)
 	}
 }
 

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/daedaleanai/git-ticket/identity"
-	"github.com/daedaleanai/git-ticket/util/git"
+	"github.com/daedaleanai/git-ticket/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -57,7 +57,7 @@ func TestOperationPackSerialize(t *testing.T) {
 
 	assert.Equal(t, 1, len(opMeta.Metadata))
 
-	opFile := NewAddCommentOp(rene, time.Now().Unix(), "message", []git.Hash{
+	opFile := NewAddCommentOp(rene, time.Now().Unix(), "message", []repository.Hash{
 		"abcdef",
 		"ghijkl",
 	})

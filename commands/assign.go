@@ -4,31 +4,36 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/daedaleanai/git-ticket/cache"
-	"github.com/daedaleanai/git-ticket/commands/select"
-	"github.com/daedaleanai/git-ticket/entity"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
+
+	_select "github.com/daedaleanai/git-ticket/commands/select"
+	"github.com/daedaleanai/git-ticket/entity"
 )
 
-func runAssign(cmd *cobra.Command, args []string) error {
+func newAssignCommand() *cobra.Command {
+	env := newEnv()
 
+	cmd := &cobra.Command{
+		Use:      "assign USER [ID]",
+		Short:    "Assign a user to a ticket.",
+		PostRunE: closeBackend(env),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAssign(env, args)
+		},
+	}
+	return cmd
+}
+
+func runAssign(env *Env, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("no user supplied")
 	}
-
-	backend, err := cache.NewRepoCache(repo)
-	if err != nil {
-		return err
-	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
 
 	// TODO allow the user to clear the assignee field
 	user := args[0]
 	args = args[1:]
 
-	b, args, err := _select.ResolveBug(backend, args)
+	b, args, err := _select.ResolveBug(env.backend, args)
 	if err != nil {
 		return err
 	}
@@ -38,8 +43,8 @@ func runAssign(cmd *cobra.Command, args []string) error {
 
 	var assigneeId entity.Id
 
-	for _, id := range backend.AllIdentityIds() {
-		i, err := backend.ResolveIdentityExcerpt(id)
+	for _, id := range env.backend.AllIdentityIds() {
+		i, err := env.backend.ResolveIdentityExcerpt(id)
 		if err != nil {
 			return err
 		}
@@ -59,7 +64,7 @@ func runAssign(cmd *cobra.Command, args []string) error {
 
 	// Check the ticket is not already assigned to the new assignee
 	if b.Snapshot().Assignee != nil {
-		currentAssignee, err := backend.ResolveIdentityExcerpt(b.Snapshot().Assignee.Id())
+		currentAssignee, err := env.backend.ResolveIdentityExcerpt(b.Snapshot().Assignee.Id())
 		if err != nil {
 			return err
 		}
@@ -69,7 +74,7 @@ func runAssign(cmd *cobra.Command, args []string) error {
 	}
 
 	// Looks good, get the full identitiy and update the ticket
-	i, err := backend.ResolveIdentity(assigneeId)
+	i, err := env.backend.ResolveIdentity(assigneeId)
 	if err != nil {
 		return err
 	}
@@ -82,16 +87,4 @@ func runAssign(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Assigning ticket %s to %s\n", b.Id().Human(), i.DisplayName())
 
 	return b.Commit()
-}
-
-var assignCmd = &cobra.Command{
-	Use:     "assign <user> [<id>]",
-	Short:   "Assign a user to a ticket.",
-	PreRunE: loadRepo,
-	RunE:    runAssign,
-}
-
-func init() {
-	RootCmd.AddCommand(assignCmd)
-	assignCmd.Flags().SortFlags = false
 }

@@ -7,7 +7,7 @@ Ticket is set MERGED.
 Ticket is set MERGED.
 
 ```
-git-ticket status merged [<id>] [flags]
+git-ticket status merged ID [flags]
 ```
 
 ### Options

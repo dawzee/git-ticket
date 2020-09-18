@@ -7,26 +7,33 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/daedaleanai/git-ticket/bug"
-	"github.com/daedaleanai/git-ticket/cache"
-	"github.com/daedaleanai/git-ticket/commands/select"
+	_select "github.com/daedaleanai/git-ticket/commands/select"
 	"github.com/daedaleanai/git-ticket/input"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
 )
 
-func runReviewChecklist(cmd *cobra.Command, args []string) error {
-	backend, err := cache.NewRepoCache(repo)
+func newReviewChecklistCommand() *cobra.Command {
+	env := newEnv()
+
+	cmd := &cobra.Command{
+		Use:     "checklist [ID]",
+		Short:   "Complete a checklist associated with a ticket.",
+		PreRunE: loadRepoEnsureUser(env),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runReviewChecklist(env, args)
+		},
+	}
+
+	return cmd
+
+}
+
+func runReviewChecklist(env *Env, args []string) error {
+	b, args, err := _select.ResolveBug(env.backend, args)
 	if err != nil {
 		return err
 	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
 
-	b, args, err := _select.ResolveBug(backend, args)
-	if err != nil {
-		return err
-	}
-
-	id, err := backend.GetUserIdentity()
+	id, err := env.backend.GetUserIdentity()
 	if err != nil {
 		return err
 	}
@@ -70,7 +77,7 @@ func runReviewChecklist(cmd *cobra.Command, args []string) error {
 
 	// Use the editor to edit the checklist, if it changed then create an update
 	// operation and commit
-	clChange, err := input.ChecklistEditorInput(repo, ticketChecklists[bug.Label(selectedChecklistLabel)])
+	clChange, err := input.ChecklistEditorInput(env.repo, ticketChecklists[bug.Label(selectedChecklistLabel)])
 	if err != nil {
 		return err
 	}
@@ -86,17 +93,4 @@ func runReviewChecklist(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("Checklists unchanged")
 	return nil
-}
-
-var reviewChecklistCmd = &cobra.Command{
-	Use:     "checklist [<id>]",
-	Short:   "Complete a checklist associated with a ticket.",
-	PreRunE: loadRepoEnsureUser,
-	RunE:    runReviewChecklist,
-}
-
-func init() {
-	reviewCmd.AddCommand(reviewChecklistCmd)
-
-	reviewChecklistCmd.Flags().SortFlags = false
 }

@@ -7,7 +7,7 @@ Edit a title of a ticket.
 Edit a title of a ticket.
 
 ```
-git-ticket title edit [<id>] [flags]
+git-ticket title edit [ID] [flags]
 ```
 
 ### Options

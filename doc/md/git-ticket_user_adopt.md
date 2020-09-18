@@ -7,7 +7,7 @@ Adopt an existing identity as your own.
 Adopt an existing identity as your own.
 
 ```
-git-ticket user adopt <user-id> [flags]
+git-ticket user adopt USER-ID [flags]
 ```
 
 ### Options

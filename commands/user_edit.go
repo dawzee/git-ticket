@@ -1,32 +1,34 @@
 package commands
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/daedaleanai/git-ticket/cache"
 	"github.com/daedaleanai/git-ticket/input"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
 )
 
-func runUserEdit(cmd *cobra.Command, args []string) error {
-	backend, err := cache.NewRepoCache(repo)
-	if err != nil {
-		return err
-	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
+func newUserEditCommand() *cobra.Command {
+	env := newEnv()
 
-	if len(args) > 1 {
-		return errors.New("only one identity can be edited at a time")
+	cmd := &cobra.Command{
+		Use:   "edit USER-ID",
+		Short: "Edit a user identity.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runUserEdit(env, args)
+		},
 	}
 
+	return cmd
+}
+
+func runUserEdit(env *Env, args []string) error {
 	var id *cache.IdentityCache
+	var err error
 	if len(args) == 1 {
-		id, err = backend.ResolveIdentityPrefix(args[0])
+		id, err = env.backend.ResolveIdentityPrefix(args[0])
 	} else {
-		id, err = backend.GetUserIdentity()
+		id, err = env.backend.GetUserIdentity()
 	}
 
 	if err != nil {
@@ -48,17 +50,5 @@ func runUserEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return backend.UpdateIdentity(id, name, email, "", avatarURL)
-}
-
-var userEditCmd = &cobra.Command{
-	Use:     "edit [<user-id>]",
-	Short:   "Edit a user identity.",
-	PreRunE: loadRepo,
-	RunE:    runUserEdit,
-}
-
-func init() {
-	userCmd.AddCommand(userEditCmd)
-	userEditCmd.Flags().SortFlags = false
+	return env.backend.UpdateIdentity(id, name, email, "", avatarURL)
 }

@@ -102,11 +102,6 @@ func TestIdentityCommitLoad(t *testing.T) {
 
 	// add more version
 
-	identity.Mutate(func(orig Mutator) Mutator {
-
-		return orig
-	})
-
 	identity.addVersionForTest(&Version{
 		time:  201,
 		name:  "René Descartes",
@@ -143,6 +138,24 @@ func loadKeys(identity *Identity) {
 			k.GetPublicKey()
 		}
 	}
+}
+
+func TestIdentityMutate(t *testing.T) {
+	identity := NewIdentity("René Descartes", "rene.descartes@example.com")
+
+	assert.Len(t, identity.versions, 1)
+
+	identity.Mutate(func(orig Mutator) Mutator {
+		orig.Email = "rene@descartes.fr"
+		orig.Name = "René"
+		orig.Login = "rene"
+		return orig
+	})
+
+	assert.Len(t, identity.versions, 2)
+	assert.Equal(t, identity.Email(), "rene@descartes.fr")
+	assert.Equal(t, identity.Name(), "René")
+	assert.Equal(t, identity.Login(), "rene")
 }
 
 func commitsAreSet(t *testing.T, identity *Identity) {

@@ -1,63 +1,198 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
+	"time"
 
 	text "github.com/MichaelMure/go-term-text"
 	"github.com/spf13/cobra"
 
+	"github.com/daedaleanai/git-ticket/bug"
 	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/daedaleanai/git-ticket/query"
 	"github.com/daedaleanai/git-ticket/util/colors"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
 )
 
-var (
-	lsStatusQuery      []string
-	lsAuthorQuery      []string
-	lsAssigneeQuery    []string
-	lsParticipantQuery []string
-	lsLabelQuery       []string
-	lsTitleQuery       []string
-	lsActorQuery       []string
-	lsNoQuery          []string
-	lsSortBy           string
-	lsSortDirection    string
-)
+type lsOptions struct {
+	query query.Query
 
-func runLsBug(cmd *cobra.Command, args []string) error {
-	backend, err := cache.NewRepoCache(repo)
-	if err != nil {
-		return err
+	statusQuery   []string
+	noQuery       []string
+	sortBy        string
+	sortDirection string
+	outputFormat  string
+}
+
+func newLsCommand() *cobra.Command {
+	env := newEnv()
+	options := lsOptions{}
+
+	cmd := &cobra.Command{
+		Use:   "ls [QUERY]",
+		Short: "List tickets.",
+		Long: `Display a summary of each ticket.
+
+You can pass an additional query to filter and order the list. This query can be expressed either with a simple query language or with flags.`,
+		Example: `List vetted tickets sorted by last edition with a query:
+git ticket ls status:vetted sort:edit-desc
+
+List merged tickets sorted by creation with flags:
+git ticket ls --status merged --by creation
+`,
+		PreRunE:  loadBackend(env),
+		PostRunE: closeBackend(env),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runLs(env, options, args)
+		},
 	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
 
-	var query *cache.Query
+	flags := cmd.Flags()
+	flags.SortFlags = false
+
+	flags.StringSliceVarP(&options.statusQuery, "status", "s", nil,
+		"Filter by status. Valid values are [open,closed]")
+	flags.StringSliceVarP(&options.query.Author, "author", "a", nil,
+		"Filter by author")
+	flags.StringSliceVarP(&options.query.Participant, "participant", "p", nil,
+		"Filter by participant")
+	flags.StringSliceVarP(&options.query.Actor, "actor", "", nil,
+		"Filter by actor")
+	flags.StringSliceVarP(&options.query.Assignee, "assignee", "A", nil,
+		"Filter by assignee")
+	flags.StringSliceVarP(&options.query.Label, "label", "l", nil,
+		"Filter by label")
+	flags.StringSliceVarP(&options.query.Title, "title", "t", nil,
+		"Filter by title")
+	flags.StringSliceVarP(&options.noQuery, "no", "n", nil,
+		"Filter by absence of something. Valid values are [label]")
+	flags.StringVarP(&options.sortBy, "by", "b", "creation",
+		"Sort the results by a characteristic. Valid values are [id,creation,edit]")
+	flags.StringVarP(&options.sortDirection, "direction", "d", "asc",
+		"Select the sorting direction. Valid values are [asc,desc]")
+	flags.StringVarP(&options.outputFormat, "format", "f", "default",
+		"Select the output formatting style. Valid values are [default,plain,json,org-mode]")
+
+	return cmd
+}
+
+func runLs(env *Env, opts lsOptions, args []string) error {
+	var q *query.Query
+	var err error
+
 	if len(args) >= 1 {
-		query, err = cache.ParseQuery(strings.Join(args, " "))
+		q, err = query.Parse(strings.Join(args, " "))
 
 		if err != nil {
 			return err
 		}
 	} else {
-		query, err = lsQueryFromFlags()
+		err = completeQuery(&opts)
 		if err != nil {
 			return err
 		}
+		q = &opts.query
 	}
 
-	allIds := backend.QueryBugs(query)
+	allIds := env.backend.QueryBugs(q)
 
-	for _, id := range allIds {
-		b, err := backend.ResolveBugExcerpt(id)
+	bugExcerpt := make([]*cache.BugExcerpt, len(allIds))
+	for i, id := range allIds {
+		b, err := env.backend.ResolveBugExcerpt(id)
 		if err != nil {
 			return err
 		}
+		bugExcerpt[i] = b
+	}
 
+	switch opts.outputFormat {
+	case "org-mode":
+		return lsOrgmodeFormatter(env, bugExcerpt)
+	case "plain":
+		return lsPlainFormatter(env, bugExcerpt)
+	case "json":
+		return lsJsonFormatter(env, bugExcerpt)
+	case "default":
+		return lsDefaultFormatter(env, bugExcerpt)
+	default:
+		return fmt.Errorf("unknown format %s", opts.outputFormat)
+	}
+}
+
+type JSONBugExcerpt struct {
+	Id         string   `json:"id"`
+	HumanId    string   `json:"human_id"`
+	CreateTime JSONTime `json:"create_time"`
+	EditTime   JSONTime `json:"edit_time"`
+
+	Status       string         `json:"status"`
+	Labels       []bug.Label    `json:"labels"`
+	Title        string         `json:"title"`
+	Actors       []JSONIdentity `json:"actors"`
+	Participants []JSONIdentity `json:"participants"`
+	Author       JSONIdentity   `json:"author"`
+
+	Comments int               `json:"comments"`
+	Metadata map[string]string `json:"metadata"`
+}
+
+func lsJsonFormatter(env *Env, bugExcerpts []*cache.BugExcerpt) error {
+	jsonBugs := make([]JSONBugExcerpt, len(bugExcerpts))
+	for i, b := range bugExcerpts {
+		jsonBug := JSONBugExcerpt{
+			Id:         b.Id.String(),
+			HumanId:    b.Id.Human(),
+			CreateTime: NewJSONTime(b.CreateTime(), b.CreateLamportTime),
+			EditTime:   NewJSONTime(b.EditTime(), b.EditLamportTime),
+			Status:     b.Status.String(),
+			Labels:     b.Labels,
+			Title:      b.Title,
+			Comments:   b.LenComments,
+			Metadata:   b.CreateMetadata,
+		}
+
+		if b.AuthorId != "" {
+			author, err := env.backend.ResolveIdentityExcerpt(b.AuthorId)
+			if err != nil {
+				return err
+			}
+			jsonBug.Author = NewJSONIdentityFromExcerpt(author)
+		} else {
+			jsonBug.Author = NewJSONIdentityFromLegacyExcerpt(&b.LegacyAuthor)
+		}
+
+		jsonBug.Actors = make([]JSONIdentity, len(b.Actors))
+		for i, element := range b.Actors {
+			actor, err := env.backend.ResolveIdentityExcerpt(element)
+			if err != nil {
+				return err
+			}
+			jsonBug.Actors[i] = NewJSONIdentityFromExcerpt(actor)
+		}
+
+		jsonBug.Participants = make([]JSONIdentity, len(b.Participants))
+		for i, element := range b.Participants {
+			participant, err := env.backend.ResolveIdentityExcerpt(element)
+			if err != nil {
+				return err
+			}
+			jsonBug.Participants[i] = NewJSONIdentityFromExcerpt(participant)
+		}
+
+		jsonBugs[i] = jsonBug
+	}
+	jsonObject, _ := json.MarshalIndent(jsonBugs, "", "    ")
+	env.out.Printf("%s\n", jsonObject)
+	return nil
+}
+
+func lsDefaultFormatter(env *Env, bugExcerpts []*cache.BugExcerpt) error {
+	for _, b := range bugExcerpts {
 		var authorName string
 		if b.AuthorId != "" {
-			author, err := backend.ResolveIdentityExcerpt(b.AuthorId)
+			author, err := env.backend.ResolveIdentityExcerpt(b.AuthorId)
 			if err != nil {
 				authorName = "<missing author data>"
 			} else {
@@ -69,7 +204,7 @@ func runLsBug(cmd *cobra.Command, args []string) error {
 
 		assigneeName := "UNASSIGNED"
 		if b.AssigneeId != "" {
-			assignee, err := backend.ResolveIdentityExcerpt(b.AssigneeId)
+			assignee, err := env.backend.ResolveIdentityExcerpt(b.AssigneeId)
 			if err != nil {
 				return err
 			}
@@ -86,7 +221,7 @@ func runLsBug(cmd *cobra.Command, args []string) error {
 
 		// truncate + pad if needed
 		labelsFmt := text.TruncateMax(labelsTxt.String(), 10)
-		titleFmt := text.LeftPadMaxLine(b.Title, 50-text.Len(labelsFmt), 0)
+		titleFmt := text.LeftPadMaxLine(strings.TrimSpace(b.Title), 50-text.Len(labelsFmt), 0)
 		authorFmt := text.LeftPadMaxLine(authorName, 15, 0)
 		assigneeFmt := text.LeftPadMaxLine(assigneeName, 15, 0)
 
@@ -95,7 +230,7 @@ func runLsBug(cmd *cobra.Command, args []string) error {
 			comments = "    ∞ 💬"
 		}
 
-		fmt.Printf("%s %s\t%s\t%s\t%s\t%s\n",
+		env.out.Printf("%s %s\t%s\t%s\t%s\t%s\n",
 			colors.Cyan(b.Id.Human()),
 			text.LeftPadMaxLine(colors.Yellow(b.Status), 10, 0),
 			titleFmt+labelsFmt,
@@ -104,123 +239,139 @@ func runLsBug(cmd *cobra.Command, args []string) error {
 			comments,
 		)
 	}
+	return nil
+}
+
+func lsPlainFormatter(env *Env, bugExcerpts []*cache.BugExcerpt) error {
+	for _, b := range bugExcerpts {
+		env.out.Printf("%s [%s] %s\n", b.Id.Human(), b.Status, strings.TrimSpace(b.Title))
+	}
+	return nil
+}
+
+func lsOrgmodeFormatter(env *Env, bugExcerpts []*cache.BugExcerpt) error {
+	// see https://orgmode.org/manual/Tags.html
+	orgTagRe := regexp.MustCompile("[^[:alpha:]_@]")
+	formatTag := func(l bug.Label) string {
+		return orgTagRe.ReplaceAllString(l.String(), "_")
+	}
+
+	formatTime := func(time time.Time) string {
+		return time.Format("[2006-01-02 Mon 15:05]")
+	}
+
+	env.out.Println("#+TODO: OPEN | CLOSED")
+
+	for _, b := range bugExcerpts {
+		status := strings.ToUpper(b.Status.String())
+
+		var title string
+		if link, ok := b.CreateMetadata["github-url"]; ok {
+			title = fmt.Sprintf("[[%s][%s]]", link, b.Title)
+		} else {
+			title = b.Title
+		}
+
+		var name string
+		if b.AuthorId != "" {
+			author, err := env.backend.ResolveIdentityExcerpt(b.AuthorId)
+			if err != nil {
+				return err
+			}
+			name = author.DisplayName()
+		} else {
+			name = b.LegacyAuthor.DisplayName()
+		}
+
+		var labels strings.Builder
+		labels.WriteString(":")
+		for i, l := range b.Labels {
+			if i > 0 {
+				labels.WriteString(":")
+			}
+			labels.WriteString(formatTag(l))
+		}
+		labels.WriteString(":")
+
+		env.out.Printf("* %-6s %s %s %s: %s %s\n",
+			status,
+			b.Id.Human(),
+			formatTime(b.CreateTime()),
+			name,
+			title,
+			labels.String(),
+		)
+
+		env.out.Printf("** Last Edited: %s\n", formatTime(b.EditTime()))
+
+		env.out.Printf("** Actors:\n")
+		for _, element := range b.Actors {
+			actor, err := env.backend.ResolveIdentityExcerpt(element)
+			if err != nil {
+				return err
+			}
+
+			env.out.Printf(": %s %s\n",
+				actor.Id.Human(),
+				actor.DisplayName(),
+			)
+		}
+
+		env.out.Printf("** Participants:\n")
+		for _, element := range b.Participants {
+			participant, err := env.backend.ResolveIdentityExcerpt(element)
+			if err != nil {
+				return err
+			}
+
+			env.out.Printf(": %s %s\n",
+				participant.Id.Human(),
+				participant.DisplayName(),
+			)
+		}
+	}
 
 	return nil
 }
 
-// Transform the command flags into a query
-func lsQueryFromFlags() (*cache.Query, error) {
-	query := cache.NewQuery()
-
-	for _, status := range lsStatusQuery {
-		f, err := cache.StatusFilter(status)
+// Finish the command flags transformation into the query.Query
+func completeQuery(opts *lsOptions) error {
+	for _, str := range opts.statusQuery {
+		status, err := bug.StatusFromString(str)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		query.Status = append(query.Status, f)
+		opts.query.Status = append(opts.query.Status, status)
 	}
 
-	for _, title := range lsTitleQuery {
-		f := cache.TitleFilter(title)
-		query.Title = append(query.Title, f)
-	}
-
-	for _, author := range lsAuthorQuery {
-		f := cache.AuthorFilter(author)
-		query.Author = append(query.Author, f)
-	}
-
-	for _, assignee := range lsAssigneeQuery {
-		f := cache.AssigneeFilter(assignee)
-		query.Assignee = append(query.Assignee, f)
-	}
-
-	for _, actor := range lsActorQuery {
-		f := cache.ActorFilter(actor)
-		query.Actor = append(query.Actor, f)
-	}
-
-	for _, participant := range lsParticipantQuery {
-		f := cache.ParticipantFilter(participant)
-		query.Participant = append(query.Participant, f)
-	}
-
-	for _, label := range lsLabelQuery {
-		f := cache.LabelFilter(label)
-		query.Label = append(query.Label, f)
-	}
-
-	for _, no := range lsNoQuery {
+	for _, no := range opts.noQuery {
 		switch no {
 		case "label":
-			query.NoFilters = append(query.NoFilters, cache.NoLabelFilter())
+			opts.query.NoLabel = true
 		default:
-			return nil, fmt.Errorf("unknown \"no\" filter %s", no)
+			return fmt.Errorf("unknown \"no\" filter %s", no)
 		}
 	}
 
-	switch lsSortBy {
+	switch opts.sortBy {
 	case "id":
-		query.OrderBy = cache.OrderById
+		opts.query.OrderBy = query.OrderById
 	case "creation":
-		query.OrderBy = cache.OrderByCreation
+		opts.query.OrderBy = query.OrderByCreation
 	case "edit":
-		query.OrderBy = cache.OrderByEdit
+		opts.query.OrderBy = query.OrderByEdit
 	default:
-		return nil, fmt.Errorf("unknown sort flag %s", lsSortBy)
+		return fmt.Errorf("unknown sort flag %s", opts.sortBy)
 	}
 
-	switch lsSortDirection {
+	switch opts.sortDirection {
 	case "asc":
-		query.OrderDirection = cache.OrderAscending
+		opts.query.OrderDirection = query.OrderAscending
 	case "desc":
-		query.OrderDirection = cache.OrderDescending
+		opts.query.OrderDirection = query.OrderDescending
 	default:
-		return nil, fmt.Errorf("unknown sort direction %s", lsSortDirection)
+		return fmt.Errorf("unknown sort direction %s", opts.sortDirection)
 	}
 
-	return query, nil
-}
-
-var lsCmd = &cobra.Command{
-	Use:   "ls [<query>]",
-	Short: "List tickets.",
-	Long: `Display a summary of each ticket.
-
-You can pass an additional query to filter and order the list. This query can be expressed either with a simple query language or with flags.`,
-	Example: `List vetted tickets sorted by last edition with a query:
-git ticket ls status:vetted sort:edit-desc
-
-List merged tickets sorted by creation with flags:
-git ticket ls --status merged --by creation
-`,
-	PreRunE: loadRepo,
-	RunE:    runLsBug,
-}
-
-func init() {
-	RootCmd.AddCommand(lsCmd)
-
-	lsCmd.Flags().SortFlags = false
-
-	lsCmd.Flags().StringSliceVarP(&lsStatusQuery, "status", "s", nil,
-		"Filter by status")
-	lsCmd.Flags().StringSliceVarP(&lsAuthorQuery, "author", "a", nil,
-		"Filter by author")
-	lsCmd.Flags().StringSliceVarP(&lsParticipantQuery, "participant", "p", nil,
-		"Filter by participant")
-	lsCmd.Flags().StringSliceVarP(&lsActorQuery, "actor", "", nil,
-		"Filter by actor")
-	lsCmd.Flags().StringSliceVarP(&lsAssigneeQuery, "assignee", "A", nil,
-		"Filter by assignee")
-	lsCmd.Flags().StringSliceVarP(&lsLabelQuery, "label", "l", nil,
-		"Filter by label")
-	lsCmd.Flags().StringSliceVarP(&lsTitleQuery, "title", "t", nil,
-		"Filter by title")
-	lsCmd.Flags().StringSliceVarP(&lsNoQuery, "no", "n", nil,
-		"Filter by absence of something. Valid values are [label]")
-	lsCmd.Flags().StringVarP(&lsSortBy, "by", "b", "creation",
-		"Sort the results by a characteristic. Valid values are [id,creation,edit]")
-	lsCmd.Flags().StringVarP(&lsSortDirection, "direction", "d", "asc",
-		"Select the sorting direction. Valid values are [asc,desc]")
+	return nil
 }

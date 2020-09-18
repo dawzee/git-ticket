@@ -4,14 +4,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var reviewCmd = &cobra.Command{
-	Use:     "review",
-	Short:   "Review actions of a ticket.",
-	PreRunE: loadRepo,
-}
+func newReviewCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "review",
+		Short: "Review actions of a ticket.",
+	}
 
-func init() {
-	RootCmd.AddCommand(reviewCmd)
+	cmd.AddCommand(newReviewChecklistCommand())
+	cmd.AddCommand(newReviewFetchCommand())
 
-	reviewCmd.Flags().SortFlags = false
+	return cmd
 }

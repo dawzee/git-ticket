@@ -1,31 +1,39 @@
 package commands
 
 import (
-	"fmt"
-
-	"github.com/daedaleanai/git-ticket/cache"
-	"github.com/daedaleanai/git-ticket/commands/select"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
+
+	_select "github.com/daedaleanai/git-ticket/commands/select"
 )
 
-func runLabelAdd(cmd *cobra.Command, args []string) error {
-	backend, err := cache.NewRepoCache(repo)
+func newLabelAddCommand() *cobra.Command {
+	env := newEnv()
+
+	cmd := &cobra.Command{
+		Use:      "add [ID] LABEL...",
+		Short:    "Add a label to a ticket.",
+		PreRunE:  loadBackendEnsureUser(env),
+		PostRunE: closeBackend(env),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runLabelAdd(env, args)
+		},
+	}
+
+	return cmd
+}
+
+func runLabelAdd(env *Env, args []string) error {
+	b, args, err := _select.ResolveBug(env.backend, args)
 	if err != nil {
 		return err
 	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
 
-	b, args, err := _select.ResolveBug(backend, args)
-	if err != nil {
-		return err
-	}
+	added := args
 
-	changes, _, err := b.ChangeLabels(args, nil)
+	changes, _, err := b.ChangeLabels(added, nil)
 
 	for _, change := range changes {
-		fmt.Println(change)
+		env.out.Println(change)
 	}
 
 	if err != nil {
@@ -33,15 +41,4 @@ func runLabelAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	return b.Commit()
-}
-
-var labelAddCmd = &cobra.Command{
-	Use:     "add [<id>] <label>[...]",
-	Short:   "Add a label to a ticket.",
-	PreRunE: loadRepoEnsureUser,
-	RunE:    runLabelAdd,
-}
-
-func init() {
-	labelCmd.AddCommand(labelAddCmd)
 }

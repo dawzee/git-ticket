@@ -7,7 +7,7 @@ Assign a user to a ticket.
 Assign a user to a ticket.
 
 ```
-git-ticket assign <user> [<id>] [flags]
+git-ticket assign USER [ID] [flags]
 ```
 
 ### Options

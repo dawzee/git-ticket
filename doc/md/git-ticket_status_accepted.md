@@ -7,7 +7,7 @@ Ticket is set ACCEPTED.
 Ticket is set ACCEPTED.
 
 ```
-git-ticket status accepted [<id>] [flags]
+git-ticket status accepted ID [flags]
 ```
 
 ### Options

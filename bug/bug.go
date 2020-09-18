@@ -11,7 +11,6 @@ import (
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/identity"
 	"github.com/daedaleanai/git-ticket/repository"
-	"github.com/daedaleanai/git-ticket/util/git"
 	"github.com/daedaleanai/git-ticket/util/lamport"
 )
 
@@ -26,6 +25,9 @@ const createClockEntryPrefix = "create-clock-"
 const createClockEntryPattern = "create-clock-%d"
 const editClockEntryPrefix = "edit-clock-"
 const editClockEntryPattern = "edit-clock-%d"
+
+const creationClockName = "bug-create"
+const editClockName = "bug-edit"
 
 var ErrBugNotExist = errors.New("bug doesn't exist")
 
@@ -54,8 +56,8 @@ type Bug struct {
 	// Id used as unique identifier
 	id entity.Id
 
-	lastCommit git.Hash
-	rootPack   git.Hash
+	lastCommit repository.Hash
+	rootPack   repository.Hash
 
 	// all the committed operations
 	packs []OperationPack
@@ -107,8 +109,8 @@ func ReadLocalBug(repo repository.ClockedRepo, id entity.Id) (*Bug, error) {
 }
 
 // ReadRemoteBug will read a remote bug from its hash
-func ReadRemoteBug(repo repository.ClockedRepo, remote string, id string) (*Bug, error) {
-	ref := fmt.Sprintf(bugsRemoteRefPattern, remote) + id
+func ReadRemoteBug(repo repository.ClockedRepo, remote string, id entity.Id) (*Bug, error) {
+	ref := fmt.Sprintf(bugsRemoteRefPattern, remote) + id.String()
 	return readBug(repo, ref)
 }
 
@@ -135,7 +137,7 @@ func readBug(repo repository.ClockedRepo, ref string) (*Bug, error) {
 
 	// Load each OperationPack
 	for _, hash := range hashes {
-		entries, err := repo.ListEntries(hash)
+		entries, err := repo.ReadTree(hash)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't list git tree entries")
 		}
@@ -197,10 +199,18 @@ func readBug(repo repository.ClockedRepo, ref string) (*Bug, error) {
 		}
 
 		// Update the clocks
-		if err := repo.WitnessCreate(bug.createTime); err != nil {
+		createClock, err := repo.GetOrCreateClock(creationClockName)
+		if err != nil {
+			return nil, err
+		}
+		if err := createClock.Witness(bug.createTime); err != nil {
 			return nil, errors.Wrap(err, "failed to update create lamport clock")
 		}
-		if err := repo.WitnessEdit(bug.editTime); err != nil {
+		editClock, err := repo.GetOrCreateClock(editClockName)
+		if err != nil {
+			return nil, err
+		}
+		if err := editClock.Witness(bug.editTime); err != nil {
 			return nil, errors.Wrap(err, "failed to update edit lamport clock")
 		}
 
@@ -230,6 +240,56 @@ func readBug(repo repository.ClockedRepo, ref string) (*Bug, error) {
 	}
 
 	return &bug, nil
+}
+
+// RemoveBug will remove a local bug from its entity.Id
+func RemoveBug(repo repository.ClockedRepo, id entity.Id) error {
+	var fullMatches []string
+
+	refs, err := repo.ListRefs(bugsRefPattern + id.String())
+	if err != nil {
+		return err
+	}
+	if len(refs) > 1 {
+		return NewErrMultipleMatchBug(refsToIds(refs))
+	}
+	if len(refs) == 1 {
+		// we have the bug locally
+		fullMatches = append(fullMatches, refs[0])
+	}
+
+	remotes, err := repo.GetRemotes()
+	if err != nil {
+		return err
+	}
+
+	for remote := range remotes {
+		remotePrefix := fmt.Sprintf(bugsRemoteRefPattern+id.String(), remote)
+		remoteRefs, err := repo.ListRefs(remotePrefix)
+		if err != nil {
+			return err
+		}
+		if len(remoteRefs) > 1 {
+			return NewErrMultipleMatchBug(refsToIds(refs))
+		}
+		if len(remoteRefs) == 1 {
+			// found the bug in a remote
+			fullMatches = append(fullMatches, remoteRefs[0])
+		}
+	}
+
+	if len(fullMatches) == 0 {
+		return ErrBugNotExist
+	}
+
+	for _, ref := range fullMatches {
+		err = repo.RemoveRef(ref)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 type StreamedBug struct {
@@ -290,11 +350,15 @@ func refsToIds(refs []string) []entity.Id {
 	ids := make([]entity.Id, len(refs))
 
 	for i, ref := range refs {
-		split := strings.Split(ref, "/")
-		ids[i] = entity.Id(split[len(split)-1])
+		ids[i] = refToId(ref)
 	}
 
 	return ids
+}
+
+func refToId(ref string) entity.Id {
+	split := strings.Split(ref, "/")
+	return entity.Id(split[len(split)-1])
 }
 
 // Validate check if the Bug data is valid
@@ -412,7 +476,11 @@ func (bug *Bug) Commit(repo repository.ClockedRepo) error {
 		return err
 	}
 
-	bug.editTime, err = repo.EditTimeIncrement()
+	editClock, err := repo.GetOrCreateClock(editClockName)
+	if err != nil {
+		return err
+	}
+	bug.editTime, err = editClock.Increment()
 	if err != nil {
 		return err
 	}
@@ -423,7 +491,11 @@ func (bug *Bug) Commit(repo repository.ClockedRepo) error {
 		Name:       fmt.Sprintf(editClockEntryPattern, bug.editTime),
 	})
 	if bug.lastCommit == "" {
-		bug.createTime, err = repo.CreateTimeIncrement()
+		createClock, err := repo.GetOrCreateClock(creationClockName)
+		if err != nil {
+			return err
+		}
+		bug.createTime, err = createClock.Increment()
 		if err != nil {
 			return err
 		}
@@ -490,7 +562,7 @@ func (bug *Bug) NeedCommit() bool {
 func makeMediaTree(pack OperationPack) []repository.TreeEntry {
 	var tree []repository.TreeEntry
 	counter := 0
-	added := make(map[git.Hash]interface{})
+	added := make(map[repository.Hash]interface{})
 
 	for _, ops := range pack.Operations {
 		for _, file := range ops.GetFiles() {

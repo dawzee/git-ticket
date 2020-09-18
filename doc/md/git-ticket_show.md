@@ -7,14 +7,16 @@ Display the details of a ticket.
 Display the details of a ticket.
 
 ```
-git-ticket show [<id>] [flags]
+git-ticket show [ID] [flags]
 ```
 
 ### Options
 
 ```
-  -f, --field string   Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,humanId,id,labels,reviews,shortId,status,title,workflow,actors,participants]
-  -h, --help           help for show
+  -t, --timeline        Output the timeline of the ticket
+      --field string    Select field to display. Valid values are [author,authorEmail,createTime,lastEdit,humanId,id,labels,shortId,status,title,actors,participants]
+  -f, --format string   Select the output formatting style. Valid values are [default,json,org-mode] (default "default")
+  -h, --help            help for show
 ```
 
 ### SEE ALSO

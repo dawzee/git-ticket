@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"testing"
 
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
@@ -15,13 +14,11 @@ import (
 
 // This is intended for testing only
 
-func CreateTestRepo(bare bool) *GitRepo {
+func CreateTestRepo(bare bool) TestedRepo {
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// fmt.Println("Creating repo:", dir)
 
 	var creator func(string) (*GitRepo, error)
 
@@ -184,38 +181,7 @@ exec gpg --no-default-keyring --keyring="%s" "$@"
 	return file.Name(), nil
 }
 
-func CleanupTestRepos(t testing.TB, repos ...Repo) {
-	var firstErr error
-	for _, repo := range repos {
-		path := repo.GetPath()
-		if strings.HasSuffix(path, "/.git") {
-			// for a normal repository (not --bare), we want to remove everything
-			// including the parent directory where files are checked out
-			path = strings.TrimSuffix(path, "/.git")
-
-			// Testing non-bare repo should also check path is
-			// only .git (i.e. ./.git), but doing so, we should
-			// try to remove the current directory and hav some
-			// trouble. In the present case, this case should not
-			// occur.
-			// TODO consider warning or error when path == ".git"
-		}
-		// fmt.Println("Cleaning repo:", path)
-		err := os.RemoveAll(path)
-		if err != nil {
-			log.Println(err)
-			if firstErr == nil {
-				firstErr = err
-			}
-		}
-	}
-
-	if firstErr != nil {
-		t.Fatal(firstErr)
-	}
-}
-
-func SetupReposAndRemote(t testing.TB) (repoA, repoB, remote *GitRepo) {
+func SetupReposAndRemote() (repoA, repoB, remote TestedRepo) {
 	repoA = CreateTestRepo(false)
 	repoB = CreateTestRepo(false)
 	remote = CreateTestRepo(true)
@@ -224,12 +190,12 @@ func SetupReposAndRemote(t testing.TB) (repoA, repoB, remote *GitRepo) {
 
 	err := repoA.AddRemote("origin", remoteAddr)
 	if err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
 
 	err = repoB.AddRemote("origin", remoteAddr)
 	if err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
 
 	return repoA, repoB, remote
