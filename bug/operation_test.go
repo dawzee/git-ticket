@@ -82,6 +82,8 @@ func TestID(t *testing.T) {
 	repo := repository.CreateTestRepo(false)
 	defer repository.CleanupTestRepos(repo)
 
+	repository.SetupSigningKey(t, repo, "a@e.org")
+
 	repos := []repository.ClockedRepo{
 		repository.NewMockRepoForTest(),
 		repo,

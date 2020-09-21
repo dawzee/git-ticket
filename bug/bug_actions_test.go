@@ -15,6 +15,9 @@ func TestPushPull(t *testing.T) {
 	repoA, repoB, remote := repository.SetupReposAndRemote()
 	defer repository.CleanupTestRepos(repoA, repoB, remote)
 
+	repository.SetupSigningKey(t, repoA, "a@e.org")
+	repository.SetupSigningKey(t, repoB, "a@e.org")
+
 	reneA := identity.NewIdentity("René Descartes", "rene@descartes.fr")
 
 	bug1, _, err := Create(reneA, time.Now().Unix(), "bug1", "message")
@@ -89,6 +92,9 @@ func BenchmarkRebaseTheirs(b *testing.B) {
 func _RebaseTheirs(t testing.TB) {
 	repoA, repoB, remote := repository.SetupReposAndRemote()
 	defer repository.CleanupTestRepos(repoA, repoB, remote)
+
+	repository.SetupSigningKey(t, repoA, "a@e.org")
+	repository.SetupSigningKey(t, repoB, "a@e.org")
 
 	reneA := identity.NewIdentity("René Descartes", "rene@descartes.fr")
 
@@ -167,6 +173,9 @@ func BenchmarkRebaseOurs(b *testing.B) {
 func _RebaseOurs(t testing.TB) {
 	repoA, repoB, remote := repository.SetupReposAndRemote()
 	defer repository.CleanupTestRepos(repoA, repoB, remote)
+
+	repository.SetupSigningKey(t, repoA, "a@e.org")
+	repository.SetupSigningKey(t, repoB, "a@e.org")
 
 	reneA := identity.NewIdentity("René Descartes", "rene@descartes.fr")
 
@@ -256,6 +265,9 @@ func BenchmarkRebaseConflict(b *testing.B) {
 func _RebaseConflict(t testing.TB) {
 	repoA, repoB, remote := repository.SetupReposAndRemote()
 	defer repository.CleanupTestRepos(repoA, repoB, remote)
+
+	repository.SetupSigningKey(t, repoA, "a@e.org")
+	repository.SetupSigningKey(t, repoB, "a@e.org")
 
 	reneA := identity.NewIdentity("René Descartes", "rene@descartes.fr")
 

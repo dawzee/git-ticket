@@ -121,6 +121,8 @@ func TestBugRemove(t *testing.T) {
 	remoteB := repository.CreateTestRepo(true)
 	defer repository.CleanupTestRepos(repo, remoteA, remoteB)
 
+	repository.SetupSigningKey(t, repo, "a@e.org")
+
 	err := repo.AddRemote("remoteA", "file://"+remoteA.GetPath())
 	require.NoError(t, err)
 

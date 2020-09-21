@@ -51,6 +51,8 @@ func RepoTest(t *testing.T, creator RepoCreator, cleaner RepoCleaner) {
 		repo := creator(false)
 		defer cleaner(repo)
 
+		SetupSigningKey(t, repo, "a@e.org")
+
 		// Blob
 
 		data := randomData()

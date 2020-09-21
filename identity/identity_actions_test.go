@@ -12,6 +12,9 @@ func TestPushPull(t *testing.T) {
 	repoA, repoB, remote := repository.SetupReposAndRemote()
 	defer repository.CleanupTestRepos(repoA, repoB, remote)
 
+	repository.SetupSigningKey(t, repoA, "a@e.org")
+	repository.SetupSigningKey(t, repoB, "a@e.org")
+
 	identity1 := NewIdentity("name1", "email1")
 	err := identity1.Commit(repoA)
 	require.NoError(t, err)

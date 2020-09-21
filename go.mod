@@ -9,6 +9,7 @@ require (
 	github.com/corpix/uarand v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.9.0
+	github.com/go-git/go-git/v5 v5.0.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/icrowley/fake v0.0.0-20180203215853-4178557ae428
 	github.com/karlseguin/expect v1.0.7 // indirect
@@ -18,8 +19,11 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.6.1
 	github.com/thought-machine/gonduit v0.2.1-0.20200511073941-6b84c545a505
-	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
-	golang.org/x/net v0.0.0-20190620200207-3b0461eec859 // indirect
+	github.com/vektah/gqlparser v1.3.1
+	github.com/xanzy/go-gitlab v0.33.0
+	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
+	golang.org/x/oauth2 v0.0.0-20181106182150-f42d05182288
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/text v0.3.3
-	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/yaml.v2 v2.2.4
 )

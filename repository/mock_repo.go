@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
+
 	"github.com/daedaleanai/git-ticket/util/lamport"
 )
 
@@ -246,6 +249,14 @@ func (r *mockRepoForTest) FindCommonAncestor(hash1 Hash, hash2 Hash) (Hash, erro
 
 		hash2 = c.parent
 	}
+}
+
+func (r *mockRepoForTest) CommitObject(h plumbing.Hash) (*object.Commit, error) {
+	panic("implement me")
+}
+
+func (r *mockRepoForTest) ResolveRevision(rev plumbing.Revision) (*plumbing.Hash, error) {
+	panic("implement me")
 }
 
 func (r *mockRepoForTest) GetTreeHash(commit Hash) (Hash, error) {

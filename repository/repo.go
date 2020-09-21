@@ -6,6 +6,9 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
+
 	"github.com/daedaleanai/git-ticket/util/lamport"
 )
 
@@ -100,6 +103,17 @@ type Repo interface {
 
 	// ListCommits will return the list of tree hashes of a ref, in chronological order
 	ListCommits(ref string) ([]Hash, error)
+
+	// CommitObject return a Commit with the given hash. If not found
+	// plumbing.ErrObjectNotFound is returned.
+	CommitObject(h plumbing.Hash) (*object.Commit, error)
+
+	// ResolveRevision resolves revision to corresponding hash. It will always
+	// resolve to a commit hash, not a tree or annotated tag.
+	//
+	// Implemented resolvers : HEAD, branch, tag, heads/branch, refs/heads/branch,
+	// refs/tags/tag, refs/remotes/origin/branch, refs/remotes/origin/HEAD, tilde and caret (HEAD~1, master~^, tag~2, ref/heads/master~1, ...), selection by text (HEAD^{/fix nasty bug})
+	ResolveRevision(rev plumbing.Revision) (*plumbing.Hash, error)
 }
 
 // ClockedRepo is a Repo that also has Lamport clocks

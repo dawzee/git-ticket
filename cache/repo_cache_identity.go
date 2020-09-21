@@ -8,10 +8,11 @@ import (
 	"path"
 	"strings"
 
+	"github.com/thought-machine/gonduit/requests"
+
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/identity"
 	"github.com/daedaleanai/git-ticket/repository"
-	"github.com/thought-machine/gonduit/requests"
 )
 
 const identityCacheFile = "identity-cache"
@@ -252,10 +253,14 @@ func (c *RepoCache) NewIdentityFull(name string, email string, login string, ava
 }
 
 func (c *RepoCache) NewIdentityRaw(name string, email string, login string, avatarUrl string, metadata map[string]string) (*IdentityCache, error) {
+	return c.NewIdentityWithKeyRaw(name, email, login, avatarUrl, metadata, nil)
+}
+
+func (c *RepoCache) NewIdentityWithKeyRaw(name string, email string, login string, avatarUrl string, metadata map[string]string, key *identity.Key) (*IdentityCache, error) {
 	// attempt to populate the phabricator ID, for now it's not fatal if it fails
 	phabId, _ := c.getPhabId(email)
 
-	i := identity.NewIdentityFull(name, email, login, avatarUrl, phabId)
+	i := identity.NewIdentityFull(name, email, login, avatarUrl, phabId, key)
 	return c.finishIdentity(i, metadata)
 }
 

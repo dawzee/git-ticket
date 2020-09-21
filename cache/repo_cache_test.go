@@ -15,6 +15,8 @@ func TestCache(t *testing.T) {
 	repo := repository.CreateTestRepo(false)
 	defer repository.CleanupTestRepos(repo)
 
+	repository.SetupSigningKey(t, repo, "a@e.org")
+
 	cache, err := NewRepoCache(repo)
 	require.NoError(t, err)
 
@@ -134,6 +136,9 @@ func TestPushPull(t *testing.T) {
 	repoA, repoB, remote := repository.SetupReposAndRemote()
 	defer repository.CleanupTestRepos(repoA, repoB, remote)
 
+	repository.SetupSigningKey(t, repoA, "a@e.org")
+	repository.SetupSigningKey(t, repoB, "a@e.org")
+
 	cacheA, err := NewRepoCache(repoA)
 	require.NoError(t, err)
 
@@ -230,6 +235,8 @@ func TestRemove(t *testing.T) {
 	remoteB := repository.CreateTestRepo(true)
 	defer repository.CleanupTestRepos(repo, remoteA, remoteB)
 
+	repository.SetupSigningKey(t, repo, "a@e.org")
+
 	err := repo.AddRemote("remoteA", "file://"+remoteA.GetPath())
 	require.NoError(t, err)
 
@@ -275,6 +282,7 @@ func TestRemove(t *testing.T) {
 
 func TestCacheEviction(t *testing.T) {
 	repo := repository.CreateTestRepo(false)
+	repository.SetupSigningKey(t, repo, "a@e.org")
 	repoCache, err := NewRepoCache(repo)
 	require.NoError(t, err)
 	repoCache.setCacheSize(2)

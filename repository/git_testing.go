@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"testing"
 
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 )
@@ -41,144 +43,137 @@ func CreateTestRepo(bare bool) TestedRepo {
 		log.Fatal("failed to set user.email for test repository: ", err)
 	}
 
-	if err = setupSigningKey(repo); err != nil {
-		log.Fatal("failed to set up the sigining key: ", err)
-	}
-
 	return repo
 }
 
-// setupSigningKey creates a GPG key and sets up the local config so it's used.
+// CreatePubkey returns an armored public PGP key.
+func CreatePubkey(t *testing.T) string {
+	// Generate a key pair for signing commits.
+	pgpEntity, err := openpgp.NewEntity("First Last", "", "fl@example.org", nil)
+	require.NoError(t, err)
+
+	// Armor the public part.
+	pubBuilder := &strings.Builder{}
+	w, err := armor.Encode(pubBuilder, openpgp.PublicKeyType, nil)
+	require.NoError(t, err)
+	err = pgpEntity.Serialize(w)
+	require.NoError(t, err)
+	err = w.Close()
+	require.NoError(t, err)
+	armoredPub := pubBuilder.String()
+	return armoredPub
+}
+
+// SetupSigningKey creates a GPG key and sets up the local config so it's used.
 // The key id is set as "user.signingkey". For the key to be found, a `gpg`
 // wrapper which uses only a custom keyring is created and set as "gpg.program".
 // Finally "commit.gpgsign" is set to true so the signing takes place.
-func setupSigningKey(repo *GitRepo) error {
+//
+// Returns the armored public key.
+func SetupSigningKey(t testing.TB, repo TestedRepo, email string) string {
+	keyId, armoredPub, gpgWrapper := CreateKey(t, email)
+
+	SetupKey(t, repo, email, keyId, gpgWrapper)
+
+	return armoredPub
+}
+
+func SetupKey(t testing.TB, repo TestedRepo, email, keyId, gpgWrapper string) {
 	config := repo.LocalConfig()
 
-	// Generate a key pair for signing commits.
-	entity, err := openpgp.NewEntity("First Last", "", "fl@example.org", nil)
-	if err != nil {
-		return fmt.Errorf("failed to create a gpg key pair: %s", err)
+	if email != "" {
+		err := config.StoreString("user.email", email)
+		require.NoError(t, err)
 	}
 
-	if err = config.StoreString("user.signingkey", entity.PrivateKey.KeyIdString()); err != nil {
-		return fmt.Errorf("failed to store the key id in git configuration: %s", err)
+	if keyId != "" {
+		err := config.StoreString("user.signingkey", keyId)
+		require.NoError(t, err)
 	}
+
+	if gpgWrapper != "" {
+		err := config.StoreString("gpg.program", gpgWrapper)
+		require.NoError(t, err)
+	}
+
+	err := config.StoreString("commit.gpgsign", "true")
+	require.NoError(t, err)
+}
+
+func CreateKey(t testing.TB, email string) (keyId, armoredPub, gpgWrapper string) {
+	// Generate a key pair for signing commits.
+	entity, err := openpgp.NewEntity("First Last", "", email, nil)
+	require.NoError(t, err)
+
+	keyId = entity.PrivateKey.KeyIdString()
 
 	// Armor the private part.
 	privBuilder := &strings.Builder{}
 	w, err := armor.Encode(privBuilder, openpgp.PrivateKeyType, nil)
-	if err != nil {
-		return fmt.Errorf("failed to armor the private part of the gpg key: %s", err)
-	}
-
-	if err = entity.SerializePrivate(w, nil); err != nil {
-		return fmt.Errorf("failed to serialize the private key: %s", err)
-	}
-
-	if err = w.Close(); err != nil {
-		return fmt.Errorf("failed to close the serialized private key: %s", err)
-	}
-
+	require.NoError(t, err)
+	err = entity.SerializePrivate(w, nil)
+	require.NoError(t, err)
+	err = w.Close()
+	require.NoError(t, err)
 	armoredPriv := privBuilder.String()
 
 	// Armor the public part.
 	pubBuilder := &strings.Builder{}
-	if w, err = armor.Encode(pubBuilder, openpgp.PublicKeyType, nil); err != nil {
-		return fmt.Errorf("failed to armor the public part of the gpg key: %s", err)
-	}
-
-	if err = entity.Serialize(w); err != nil {
-		return fmt.Errorf("failed to serialize the public key: %s", err)
-	}
-
-	if err = w.Close(); err != nil {
-		return fmt.Errorf("failed to close the serialized public key: %s", err)
-	}
-
-	armoredPub := pubBuilder.String()
+	w, err = armor.Encode(pubBuilder, openpgp.PublicKeyType, nil)
+	require.NoError(t, err)
+	err = entity.Serialize(w)
+	require.NoError(t, err)
+	err = w.Close()
+	require.NoError(t, err)
+	armoredPub = pubBuilder.String()
 
 	// Create a custom gpg keyring to be used when creating commits with `git`.
 	keyring, err := ioutil.TempFile("", "keyring")
-	if err != nil {
-		return fmt.Errorf("failed to create a tempfile for the keyring: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Import the armored private key to the custom keyring.
 	priv, err := ioutil.TempFile("", "privkey")
-	if err != nil {
-		return fmt.Errorf("failed to create a tempfile for the private key: %s", err)
-	}
-
-	if _, err = fmt.Fprint(priv, armoredPriv); err != nil {
-		return fmt.Errorf("failed to write the private key: %s", err)
-	}
-
-	if err = priv.Close(); err != nil {
-		return fmt.Errorf("failed to close the private key file: %s", err)
-	}
-
-	if err = exec.Command("gpg", "--no-default-keyring", "--keyring", keyring.Name(), "--import", priv.Name()).Run(); err != nil {
-		return fmt.Errorf("failed to import the private key: %s", err)
-	}
+	require.NoError(t, err)
+	_, err = fmt.Fprint(priv, armoredPriv)
+	require.NoError(t, err)
+	err = priv.Close()
+	require.NoError(t, err)
+	err = exec.Command("gpg", "--no-default-keyring", "--keyring", keyring.Name(), "--import", priv.Name()).Run()
+	require.NoError(t, err)
 
 	// Import the armored public key to the custom keyring.
 	pub, err := ioutil.TempFile("", "pubkey")
-	if err != nil {
-		return fmt.Errorf("failed to create a tempfile for the public key: %s", err)
-	}
-
-	if _, err = fmt.Fprint(pub, armoredPub); err != nil {
-		return fmt.Errorf("failed to write the public key: %s", err)
-	}
-
-	if err = pub.Close(); err != nil {
-		return fmt.Errorf("failed to close the public key file: %s", err)
-	}
-
-	if err = exec.Command("gpg", "--no-default-keyring", "--keyring", keyring.Name(), "--import", pub.Name()).Run(); err != nil {
-		return fmt.Errorf("failed to import the public key: %s", err)
-	}
+	require.NoError(t, err)
+	_, err = fmt.Fprint(pub, armoredPub)
+	require.NoError(t, err)
+	err = pub.Close()
+	require.NoError(t, err)
+	err = exec.Command("gpg", "--no-default-keyring", "--keyring", keyring.Name(), "--import", pub.Name()).Run()
+	require.NoError(t, err)
 
 	// Use a gpg wrapper to use a custom keyring containing GPGKeyID.
-	gpgWrapper, err := createGPGWrapper(keyring.Name())
-	if err != nil {
-		return fmt.Errorf("failed to create the GPG wrapper program: %s", err)
-	}
+	gpgWrapper = createGPGWrapper(t, keyring.Name())
 
-	if err := config.StoreString("gpg.program", gpgWrapper); err != nil {
-		return fmt.Errorf("failed to set gpg.program for test repository: %s", err)
-	}
-
-	if err := config.StoreString("commit.gpgsign", "true"); err != nil {
-		return fmt.Errorf("failed to set commit.gpgsign for test repository: %s", err)
-	}
-	return nil
+	return
 }
 
 // createGPGWrapper creates a shell script running gpg with a specific keyring.
-func createGPGWrapper(keyringPath string) (string, error) {
+func createGPGWrapper(t testing.TB, keyringPath string) string {
 	file, err := ioutil.TempFile("", "gpgwrapper")
-	if err != nil {
-		return "", fmt.Errorf("failed to open the tempfile for gpg wrapper: %s", err)
-	}
+	require.NoError(t, err)
 
 	_, err = fmt.Fprintf(file, `#!/bin/sh
 exec gpg --no-default-keyring --keyring="%s" "$@"
 `, keyringPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to write the gpg wrapper: %s", err)
-	}
+	require.NoError(t, err)
 
-	if err = file.Close(); err != nil {
-		return "", fmt.Errorf("failed to close the gpg wrapper file: %s", err)
-	}
+	err = file.Close()
+	require.NoError(t, err)
 
-	if err = os.Chmod(file.Name(), os.FileMode(0700)); err != nil {
-		return "", fmt.Errorf("failed to change the file permissions of the gpg wrapper: %s", err)
-	}
+	err = os.Chmod(file.Name(), os.FileMode(0700))
+	require.NoError(t, err)
 
-	return file.Name(), nil
+	return file.Name()
 }
 
 func SetupReposAndRemote() (repoA, repoB, remote TestedRepo) {

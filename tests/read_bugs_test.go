@@ -12,6 +12,8 @@ func TestReadBugs(t *testing.T) {
 	repo := repository.CreateTestRepo(false)
 	defer repository.CleanupTestRepos(repo)
 
+	repository.SetupSigningKey(t, repo, "a@e.org")
+
 	random_bugs.FillRepoWithSeed(repo, 15, 42)
 
 	bugs := bug.ReadAllLocalBugs(repo)
