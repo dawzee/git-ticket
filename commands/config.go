@@ -12,6 +12,7 @@ func newConfigCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:      "config [CONFIG]",
 		Short:    "List configs or show the specified config",
+		PreRunE:  loadBackend(env),
 		PostRunE: closeBackend(env),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runConfig(env, args)

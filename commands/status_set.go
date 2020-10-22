@@ -13,13 +13,15 @@ func newStatusSetCommands() <-chan *cobra.Command {
 	cmds := make(chan *cobra.Command)
 	go func() {
 		for s := bug.FirstStatus; s <= bug.LastStatus; s++ {
+			temp := s
 			cmd := &cobra.Command{
-				Use:     s.String() + " ID",
-				Short:   "Ticket is " + s.Action() + ".",
-				Args:    cobra.ExactArgs(1),
-				PreRunE: loadRepoEnsureUser(env),
+				Use:      s.String() + " ID",
+				Short:    "Ticket is " + s.Action() + ".",
+				Args:     cobra.MaximumNArgs(1),
+				PreRunE:  loadBackendEnsureUser(env),
+				PostRunE: closeBackend(env),
 				RunE: func(cmd *cobra.Command, args []string) error {
-					return runStatusSet(env, args, s)
+					return runStatusSet(env, args, temp)
 				},
 			}
 

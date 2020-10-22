@@ -25,7 +25,8 @@ store any updates since the previous call. Multiple Revisions can be stored with
 ticket by running the command with different IDs.
 
 `,
-		PreRunE: loadRepoEnsureUser(env),
+		PreRunE:  loadBackendEnsureUser(env),
+		PostRunE: closeBackend(env),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runReviewFetch(env, args)
 		},

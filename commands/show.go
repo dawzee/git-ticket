@@ -40,7 +40,7 @@ func newShowCommand() *cobra.Command {
 	flags.BoolVarP(&options.timeline, "timeline", "t", false,
 		"Output the timeline of the ticket")
 	flags.StringVarP(&options.fields, "field", "", "",
-		"Select field to display. Valid values are [author,authorEmail,createTime,lastEdit,humanId,id,labels,shortId,status,title,actors,participants]")
+		"Select field to display. Valid values are [assignee,author,authorEmail,checklists,createTime,lastEdit,humanId,id,labels,reviews,shortId,status,title,workflow,actors,participants]")
 	flags.StringVarP(&options.format, "format", "f", "default",
 		"Select the output formatting style. Valid values are [default,json,org-mode]")
 

@@ -3,6 +3,7 @@ package termui
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 
 	text "github.com/MichaelMure/go-term-text"
@@ -24,7 +25,6 @@ const timeLayout = "Jan 2 2006"
 var showBugHelp = helpBar{
 	{"q", "Save and return"},
 	{"←↓↑→,hjkl", "Navigation"},
-	{"o", "Toggle open/close"},
 	{"e", "Edit"},
 	{"c", "Comment"},
 	{"t", "Change title"},
@@ -106,12 +106,21 @@ func (sb *showBug) layout(g *gocui.Gui) error {
 	}
 
 	v.Clear()
-	_, _ = fmt.Fprint(v, showBugHelp.Render(maxX))
+
+	currentBugHelp := showBugHelp
 
 	validStates, err := sb.bug.Snapshot().NextStates()
 	for _, vs := range validStates {
-		_, _ = fmt.Fprintf(v, " [%d] %s", vs, vs.Action())
+		currentBugHelp = append(currentBugHelp,
+			struct {
+				keys string
+				text string
+			}{
+				keys: strconv.Itoa(int(vs)),
+				text: vs.Action()})
 	}
+
+	_, _ = fmt.Fprint(v, currentBugHelp.Render(maxX))
 
 	_, err = g.SetViewOnTop(showBugInstructionView)
 	if err != nil {
