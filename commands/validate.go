@@ -13,12 +13,12 @@ func newValidateCommand() *cobra.Command {
 	env := newEnv()
 
 	cmd := &cobra.Command{
-		Use:   "validate",
-		Short: "Validate identities and commits signatures.",
+		Use:      "validate COMMIT...",
+		Short:    "Validate identities and commits signatures.",
 		PreRunE:  loadBackend(env),
 		PostRunE: closeBackend(env),
-		Run: func(cmd *cobra.Command, args []string) {
-			runValidate(env, args)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runValidate(env, args)
 		},
 	}
 

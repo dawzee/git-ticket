@@ -42,24 +42,24 @@ func main() {
 
 func genBash(root *cobra.Command) error {
 	cwd, _ := os.Getwd()
-	dir := path.Join(cwd, "misc", "bash_completion", "git-bug")
+	dir := path.Join(cwd, "misc", "bash_completion", "git-ticket")
 	return root.GenBashCompletionFile(dir)
 }
 
 func genFish(root *cobra.Command) error {
 	cwd, _ := os.Getwd()
-	dir := path.Join(cwd, "misc", "fish_completion", "git-bug")
+	dir := path.Join(cwd, "misc", "fish_completion", "git-ticket")
 	return root.GenFishCompletionFile(dir, true)
 }
 
 func genPowerShell(root *cobra.Command) error {
 	cwd, _ := os.Getwd()
-	filepath := path.Join(cwd, "misc", "powershell_completion", "git-bug")
+	filepath := path.Join(cwd, "misc", "powershell_completion", "git-ticket")
 	return root.GenPowerShellCompletionFile(filepath)
 }
 
 func genZsh(root *cobra.Command) error {
 	cwd, _ := os.Getwd()
-	filepath := path.Join(cwd, "misc", "zsh_completion", "git-bug")
+	filepath := path.Join(cwd, "misc", "zsh_completion", "git-ticket")
 	return root.GenZshCompletionFile(filepath)
 }

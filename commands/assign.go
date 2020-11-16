@@ -16,6 +16,7 @@ func newAssignCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:      "assign USER [ID]",
 		Short:    "Assign a user to a ticket.",
+		PreRunE:  loadBackend(env),
 		PostRunE: closeBackend(env),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runAssign(env, args)

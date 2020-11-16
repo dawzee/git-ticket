@@ -15,9 +15,10 @@ func newReviewChecklistCommand() *cobra.Command {
 	env := newEnv()
 
 	cmd := &cobra.Command{
-		Use:     "checklist [ID]",
-		Short:   "Complete a checklist associated with a ticket.",
-		PreRunE: loadRepoEnsureUser(env),
+		Use:      "checklist [ID]",
+		Short:    "Complete a checklist associated with a ticket.",
+		PreRunE:  loadBackendEnsureUser(env),
+		PostRunE: closeBackend(env),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runReviewChecklist(env, args)
 		},

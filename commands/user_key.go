@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"github.com/daedaleanai/git-ticket/cache"
 )
 
 func newUserKeyCommand() *cobra.Command {
@@ -25,18 +23,6 @@ func newUserKeyCommand() *cobra.Command {
 	cmd.AddCommand(newUserKeyRmCommand())
 
 	return cmd
-}
-
-func ResolveUser(repo *cache.RepoCache, args []string) (*cache.IdentityCache, []string, error) {
-	var err error
-	var id *cache.IdentityCache
-	if len(args) > 0 {
-		id, err = repo.ResolveIdentityPrefix(args[0])
-		args = args[1:]
-	} else {
-		id, err = repo.GetUserIdentity()
-	}
-	return id, args, err
 }
 
 func runUserKey(env *Env, args []string) error {

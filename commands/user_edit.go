@@ -3,7 +3,6 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/daedaleanai/git-ticket/cache"
 	"github.com/daedaleanai/git-ticket/input"
 )
 
@@ -11,9 +10,11 @@ func newUserEditCommand() *cobra.Command {
 	env := newEnv()
 
 	cmd := &cobra.Command{
-		Use:   "edit USER-ID",
-		Short: "Edit a user identity.",
-		Args:  cobra.MaximumNArgs(1),
+		Use:      "edit USER-ID",
+		Short:    "Edit a user identity.",
+		PreRunE:  loadBackendEnsureUser(env),
+		PostRunE: closeBackend(env),
+		Args:     cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runUserEdit(env, args)
 		},
@@ -23,13 +24,7 @@ func newUserEditCommand() *cobra.Command {
 }
 
 func runUserEdit(env *Env, args []string) error {
-	var id *cache.IdentityCache
-	var err error
-	if len(args) == 1 {
-		id, err = env.backend.ResolveIdentityPrefix(args[0])
-	} else {
-		id, err = env.backend.GetUserIdentity()
-	}
+	id, args, err := ResolveUser(env.backend, args)
 
 	if err != nil {
 		return err

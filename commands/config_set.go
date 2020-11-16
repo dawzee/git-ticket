@@ -21,6 +21,7 @@ func newConfigSetCommand() *cobra.Command {
 		Use:      "set CONFIG",
 		Short:    "Set the named configuration data.",
 		Args:     cobra.ExactArgs(1),
+		PreRunE:  loadBackend(env),
 		PostRunE: closeBackend(env),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runConfigSet(env, options, args)
