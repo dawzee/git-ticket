@@ -3,7 +3,7 @@ package bug
 import (
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/identity"
-	"github.com/daedaleanai/git-ticket/util/git"
+	"github.com/daedaleanai/git-ticket/repository"
 	"github.com/daedaleanai/git-ticket/util/timestamp"
 	"github.com/dustin/go-humanize"
 )
@@ -13,7 +13,7 @@ type Comment struct {
 	id      entity.Id
 	Author  identity.Interface
 	Message string
-	Files   []git.Hash
+	Files   []repository.Hash
 
 	// Creation time of the comment.
 	// Should be used only for human display, never for ordering as we can't rely on it in a distributed system.

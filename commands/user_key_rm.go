@@ -1,31 +1,39 @@
 package commands
 
 import (
-	"errors"
 	"fmt"
 
-	"github.com/daedaleanai/git-ticket/cache"
-	"github.com/daedaleanai/git-ticket/identity"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
+	"github.com/daedaleanai/git-ticket/identity"
 )
 
-func runKeyRm(cmd *cobra.Command, args []string) error {
-	backend, err := cache.NewRepoCache(repo)
-	if err != nil {
-		return err
-	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
+func newUserKeyRmCommand() *cobra.Command {
+	env := newEnv()
 
+	cmd := &cobra.Command{
+		Use:      "rm <key-fingerprint> [<user-id>]",
+		Short:    "Remove a PGP key from the adopted or the specified user.",
+		PreRunE:  loadBackendEnsureUser(env),
+		PostRunE: closeBackend(env),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runUserKeyRm(env, args)
+		},
+	}
+
+	return cmd
+}
+
+func runUserKeyRm(env *Env, args []string) error {
 	if len(args) == 0 {
-		return errors.New("missing key ID")
+		return errors.New("missing key fingerprint")
 	}
 
-	keyFingerprint := args[0]
+	fingerprint := args[0]
 	args = args[1:]
 
-	id, args, err := ResolveUser(backend, args)
+	id, args, err := ResolveUser(env.backend, args)
 	if err != nil {
 		return err
 	}
@@ -34,30 +42,8 @@ func runKeyRm(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unexpected arguments: %s", args)
 	}
 
-	fingerprint, err := identity.DecodeKeyFingerprint(keyFingerprint)
-	if err != nil {
-		return err
-	}
-
 	var removedKey *identity.Key
-	err = id.Mutate(func(mutator identity.Mutator) identity.Mutator {
-		for j, key := range mutator.Keys {
-			pubkey, err := key.GetPublicKey()
-			if err != nil {
-				fmt.Printf("Warning: failed to decode public key: %s", err)
-				continue
-			}
-
-			if pubkey.Fingerprint == fingerprint {
-				removedKey = key
-				copy(mutator.Keys[j:], mutator.Keys[j+1:])
-				mutator.Keys = mutator.Keys[:len(mutator.Keys)-1]
-				break
-			}
-		}
-		return mutator
-	})
-
+	err = id.Mutate(identity.RemoveKeyMutator(fingerprint, &removedKey))
 	if err != nil {
 		return err
 	}
@@ -67,15 +53,4 @@ func runKeyRm(cmd *cobra.Command, args []string) error {
 	}
 
 	return id.Commit()
-}
-
-var keyRmCmd = &cobra.Command{
-	Use:     "rm <key-fingerprint> [<user-id>]",
-	Short:   "Remove a PGP key from the adopted or the specified user.",
-	PreRunE: loadRepoEnsureUser,
-	RunE:    runKeyRm,
-}
-
-func init() {
-	keyCmd.AddCommand(keyRmCmd)
 }

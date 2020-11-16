@@ -118,7 +118,8 @@ func BugCommentEditorInput(repo repository.RepoCommon, preMessage string) (strin
 	return processComment(raw)
 }
 
-const identityVersionKeyTemplate = `
+const identityVersionKeyTemplate = `%s
+
 # Please enter the armored key block. Lines starting with '#' will be ignored,
 # and an empty message aborts the operation.
 `
@@ -126,8 +127,9 @@ const identityVersionKeyTemplate = `
 // IdentityVersionKeyEditorInput will open the default editor in the terminal
 // with a template for the user to fill. The file is then processed to extract
 // the key.
-func IdentityVersionKeyEditorInput(repo repository.RepoCommon) (string, error) {
-	raw, err := launchEditorWithTemplate(repo, keyFilename, identityVersionKeyTemplate)
+func IdentityVersionKeyEditorInput(repo repository.RepoCommon, preMessage string) (string, error) {
+	template := fmt.Sprintf(identityVersionKeyTemplate, preMessage)
+	raw, err := launchEditorWithTemplate(repo, keyFilename, template)
 
 	if err != nil {
 		return "", err

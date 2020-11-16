@@ -3,11 +3,29 @@ package commands
 import (
 	"fmt"
 
-	"github.com/daedaleanai/git-ticket/cache"
-	"github.com/daedaleanai/git-ticket/identity"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
+
+	"github.com/daedaleanai/git-ticket/cache"
 )
+
+func newUserKeyCommand() *cobra.Command {
+	env := newEnv()
+
+	cmd := &cobra.Command{
+		Use:      "key [<user-id>]",
+		Short:    "Display, add or remove keys to/from a user.",
+		PreRunE:  loadBackendEnsureUser(env),
+		PostRunE: closeBackend(env),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runUserKey(env, args)
+		},
+	}
+
+	cmd.AddCommand(newUserKeyAddCommand())
+	cmd.AddCommand(newUserKeyRmCommand())
+
+	return cmd
+}
 
 func ResolveUser(repo *cache.RepoCache, args []string) (*cache.IdentityCache, []string, error) {
 	var err error
@@ -21,15 +39,8 @@ func ResolveUser(repo *cache.RepoCache, args []string) (*cache.IdentityCache, []
 	return id, args, err
 }
 
-func runKey(cmd *cobra.Command, args []string) error {
-	backend, err := cache.NewRepoCache(repo)
-	if err != nil {
-		return err
-	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
-
-	id, args, err := ResolveUser(backend, args)
+func runUserKey(env *Env, args []string) error {
+	id, args, err := ResolveUser(env.backend, args)
 	if err != nil {
 		return err
 	}
@@ -39,23 +50,8 @@ func runKey(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, key := range id.Keys() {
-		pubkey, err := key.GetPublicKey()
-		if err != nil {
-			return err
-		}
-		fmt.Println(identity.EncodeKeyFingerprint(pubkey.Fingerprint))
+		fmt.Println(key.Fingerprint())
 	}
 
 	return nil
-}
-
-var keyCmd = &cobra.Command{
-	Use:     "key [<user-id>]",
-	Short:   "Display, add or remove keys to/from a user.",
-	PreRunE: loadRepoEnsureUser,
-	RunE:    runKey,
-}
-
-func init() {
-	userCmd.AddCommand(keyCmd)
 }

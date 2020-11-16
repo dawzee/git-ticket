@@ -7,7 +7,7 @@ Push tickets update to a git remote.
 Push tickets update to a git remote.
 
 ```
-git-ticket push [<remote>] [flags]
+git-ticket push [REMOTE] [flags]
 ```
 
 ### Options

@@ -2,23 +2,43 @@ package commands
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/daedaleanai/git-ticket/cache"
-	"github.com/daedaleanai/git-ticket/input"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
+
+	"github.com/daedaleanai/git-ticket/identity"
+	"github.com/daedaleanai/git-ticket/input"
 )
 
-func runUserCreate(cmd *cobra.Command, args []string) error {
-	backend, err := cache.NewRepoCache(repo)
-	if err != nil {
-		return err
-	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
+type userCreateOptions struct {
+	ArmoredKeyFile string
+}
 
-	preName, err := backend.GetUserName()
+func newUserCreateCommand() *cobra.Command {
+	env := newEnv()
+	options := userCreateOptions{}
+
+	cmd := &cobra.Command{
+		Use:      "create",
+		Short:    "Create a new identity.",
+		PreRunE:  loadBackend(env),
+		PostRunE: closeBackend(env),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runUserCreate(env, options)
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.SortFlags = false
+
+	flags.StringVar(&options.ArmoredKeyFile, "key-file", "",
+		"Take the armored PGP public key from the given file. Use - to read the message from the standard input",
+	)
+
+	return cmd
+}
+
+func runUserCreate(env *Env, opts userCreateOptions) error {
+	preName, err := env.backend.GetUserName()
 	if err != nil {
 		return err
 	}
@@ -28,7 +48,7 @@ func runUserCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	preEmail, err := backend.GetUserEmail()
+	preEmail, err := env.backend.GetUserEmail()
 	if err != nil {
 		return err
 	}
@@ -43,7 +63,22 @@ func runUserCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	id, err := backend.NewIdentityRaw(name, email, "", avatarURL, nil)
+	var key *identity.Key
+	if opts.ArmoredKeyFile != "" {
+		armoredPubkey, err := input.TextFileInput(opts.ArmoredKeyFile)
+		if err != nil {
+			return err
+		}
+
+		key, err = identity.NewKeyFromArmored(armoredPubkey)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Using key from file `%s`:\n%s\n", opts.ArmoredKeyFile, armoredPubkey)
+	}
+
+	id, err := env.backend.NewIdentityWithKeyRaw(name, email, "", avatarURL, nil, key)
 	if err != nil {
 		return err
 	}
@@ -53,32 +88,20 @@ func runUserCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	set, err := backend.IsUserIdentitySet()
+	set, err := env.backend.IsUserIdentitySet()
 	if err != nil {
 		return err
 	}
 
 	if !set {
-		err = backend.SetUserIdentity(id)
+		err = env.backend.SetUserIdentity(id)
 		if err != nil {
 			return err
 		}
 	}
 
-	_, _ = fmt.Fprintln(os.Stderr)
-	fmt.Println(id.Id())
+	env.err.Println()
+	env.out.Println(id.Id())
 
 	return nil
-}
-
-var userCreateCmd = &cobra.Command{
-	Use:     "create",
-	Short:   "Create a new identity.",
-	PreRunE: loadRepo,
-	RunE:    runUserCreate,
-}
-
-func init() {
-	userCmd.AddCommand(userCreateCmd)
-	userCreateCmd.Flags().SortFlags = false
 }

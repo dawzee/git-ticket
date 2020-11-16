@@ -12,7 +12,9 @@ import (
 
 func TestSelect(t *testing.T) {
 	repo := repository.CreateTestRepo(false)
-	defer repository.CleanupTestRepos(t, repo)
+	defer repository.CleanupTestRepos(repo)
+
+	repository.SetupSigningKey(t, repo, "a@e.org")
 
 	repoCache, err := cache.NewRepoCache(repo)
 	require.NoError(t, err)

@@ -3,6 +3,7 @@ package cache
 import (
 	"encoding/gob"
 	"fmt"
+	"time"
 
 	"github.com/daedaleanai/git-ticket/bug"
 	"github.com/daedaleanai/git-ticket/entity"
@@ -85,8 +86,8 @@ func NewBugExcerpt(b bug.Interface, snap *bug.Snapshot) *BugExcerpt {
 		Id:                b.Id(),
 		CreateLamportTime: b.CreateLamportTime(),
 		EditLamportTime:   b.EditLamportTime(),
-		CreateUnixTime:    b.FirstOp().GetUnixTime(),
-		EditUnixTime:      snap.LastEditUnix(),
+		CreateUnixTime:    b.FirstOp().Time().Unix(),
+		EditUnixTime:      snap.EditTime().Unix(),
 		Status:            snap.Status,
 		Labels:            snap.Labels,
 		AssigneeId:        assigneeId,
@@ -110,6 +111,14 @@ func NewBugExcerpt(b bug.Interface, snap *bug.Snapshot) *BugExcerpt {
 	}
 
 	return e
+}
+
+func (b *BugExcerpt) CreateTime() time.Time {
+	return time.Unix(b.CreateUnixTime, 0)
+}
+
+func (b *BugExcerpt) EditTime() time.Time {
+	return time.Unix(b.EditUnixTime, 0)
 }
 
 /*

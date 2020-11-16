@@ -2,65 +2,59 @@ package commands
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
-	"github.com/daedaleanai/git-ticket/cache"
-	"github.com/daedaleanai/git-ticket/commands/select"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
+	_select "github.com/daedaleanai/git-ticket/commands/select"
 )
 
-func runSelect(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return errors.New("You must provide a ticket id")
-	}
+func newSelectCommand() *cobra.Command {
+	env := newEnv()
 
-	backend, err := cache.NewRepoCache(repo)
-	if err != nil {
-		return err
-	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
-
-	prefix := args[0]
-
-	b, err := backend.ResolveBugPrefix(prefix)
-	if err != nil {
-		return err
-	}
-
-	err = _select.Select(backend, b.Id())
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("selected ticket %s: %s\n", b.Id().Human(), b.Snapshot().Title)
-
-	return nil
-}
-
-var selectCmd = &cobra.Command{
-	Use:   "select <id>",
-	Short: "Select a ticket for implicit use in future commands.",
-	Example: `git ticket select 2f15
+	cmd := &cobra.Command{
+		Use:   "select ID",
+		Short: "Select a ticket for implicit use in future commands.",
+		Example: `git ticket select 2f15
 git ticket comment
 git ticket status
 `,
-	Long: `Select a ticket for implicit use in future commands.
+		Long: `Select a ticket for implicit use in future commands.
 
-This command allows you to omit any ticket <id> argument, for example:
+This command allows you to omit any ticket ID argument, for example:
   git ticket show
 instead of
   git ticket show 2f153ca
 
 The complementary command is "git ticket deselect" performing the opposite operation.
 `,
-	PreRunE: loadRepo,
-	RunE:    runSelect,
+		PreRunE:  loadBackend(env),
+		PostRunE: closeBackend(env),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runSelect(env, args)
+		},
+	}
+
+	return cmd
 }
 
-func init() {
-	RootCmd.AddCommand(selectCmd)
-	selectCmd.Flags().SortFlags = false
+func runSelect(env *Env, args []string) error {
+	if len(args) == 0 {
+		return errors.New("You must provide a ticket id")
+	}
+
+	prefix := args[0]
+
+	b, err := env.backend.ResolveBugPrefix(prefix)
+	if err != nil {
+		return err
+	}
+
+	err = _select.Select(env.backend, b.Id())
+	if err != nil {
+		return err
+	}
+
+	env.out.Printf("selected ticket %s: %s\n", b.Id().Human(), b.Snapshot().Title)
+
+	return nil
 }

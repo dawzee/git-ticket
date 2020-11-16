@@ -7,7 +7,7 @@ Display available commands.
 Display available commands.
 
 ```
-git-ticket commands [<option>...] [flags]
+git-ticket commands [flags]
 ```
 
 ### Options

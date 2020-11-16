@@ -36,7 +36,72 @@ __git-ticket_contains_word()
     return 1
 }
 
+<<<<<<< HEAD:misc/bash_completion/git-ticket
 __git-ticket_handle_reply()
+=======
+__git-bug_handle_go_custom_completion()
+{
+    __git-bug_debug "${FUNCNAME[0]}: cur is ${cur}, words[*] is ${words[*]}, #words[@] is ${#words[@]}"
+
+    local out requestComp lastParam lastChar comp directive args
+
+    # Prepare the command to request completions for the program.
+    # Calling ${words[0]} instead of directly git-bug allows to handle aliases
+    args=("${words[@]:1}")
+    requestComp="${words[0]} __completeNoDesc ${args[*]}"
+
+    lastParam=${words[$((${#words[@]}-1))]}
+    lastChar=${lastParam:$((${#lastParam}-1)):1}
+    __git-bug_debug "${FUNCNAME[0]}: lastParam ${lastParam}, lastChar ${lastChar}"
+
+    if [ -z "${cur}" ] && [ "${lastChar}" != "=" ]; then
+        # If the last parameter is complete (there is a space following it)
+        # We add an extra empty parameter so we can indicate this to the go method.
+        __git-bug_debug "${FUNCNAME[0]}: Adding extra empty parameter"
+        requestComp="${requestComp} \"\""
+    fi
+
+    __git-bug_debug "${FUNCNAME[0]}: calling ${requestComp}"
+    # Use eval to handle any environment variables and such
+    out=$(eval "${requestComp}" 2>/dev/null)
+
+    # Extract the directive integer at the very end of the output following a colon (:)
+    directive=${out##*:}
+    # Remove the directive
+    out=${out%:*}
+    if [ "${directive}" = "${out}" ]; then
+        # There is not directive specified
+        directive=0
+    fi
+    __git-bug_debug "${FUNCNAME[0]}: the completion directive is: ${directive}"
+    __git-bug_debug "${FUNCNAME[0]}: the completions are: ${out[*]}"
+
+    if [ $((directive & 1)) -ne 0 ]; then
+        # Error code.  No completion.
+        __git-bug_debug "${FUNCNAME[0]}: received error from custom completion go code"
+        return
+    else
+        if [ $((directive & 2)) -ne 0 ]; then
+            if [[ $(type -t compopt) = "builtin" ]]; then
+                __git-bug_debug "${FUNCNAME[0]}: activating no space"
+                compopt -o nospace
+            fi
+        fi
+        if [ $((directive & 4)) -ne 0 ]; then
+            if [[ $(type -t compopt) = "builtin" ]]; then
+                __git-bug_debug "${FUNCNAME[0]}: activating no file completion"
+                compopt +o default
+            fi
+        fi
+
+        while IFS='' read -r comp; do
+            COMPREPLY+=("$comp")
+        done < <(compgen -W "${out[*]}" -- "$cur")
+    fi
+}
+
+__git-bug_handle_reply()
+>>>>>>> remotes/upstream/master:misc/bash_completion/git-bug
 {
     __git-ticket_debug "${FUNCNAME[0]}"
     local comp
@@ -99,6 +164,10 @@ __git-ticket_handle_reply()
     completions=("${commands[@]}")
     if [[ ${#must_have_one_noun[@]} -ne 0 ]]; then
         completions=("${must_have_one_noun[@]}")
+    elif [[ -n "${has_completion_function}" ]]; then
+        # if a go completion function is provided, defer to that function
+        completions=()
+        __git-bug_handle_go_custom_completion
     fi
     if [[ ${#must_have_one_flag[@]} -ne 0 ]]; then
         completions+=("${must_have_one_flag[@]}")
@@ -679,10 +748,53 @@ _git-ticket_show()
     flags_with_completion=()
     flags_completion=()
 
+<<<<<<< HEAD:misc/bash_completion/git-ticket
     flags+=("--field=")
     two_word_flags+=("--field")
     two_word_flags+=("-f")
     local_nonpersistent_flags+=("--field=")
+=======
+    flags+=("--status=")
+    two_word_flags+=("--status")
+    two_word_flags+=("-s")
+    local_nonpersistent_flags+=("--status=")
+    flags+=("--author=")
+    two_word_flags+=("--author")
+    two_word_flags+=("-a")
+    local_nonpersistent_flags+=("--author=")
+    flags+=("--participant=")
+    two_word_flags+=("--participant")
+    two_word_flags+=("-p")
+    local_nonpersistent_flags+=("--participant=")
+    flags+=("--actor=")
+    two_word_flags+=("--actor")
+    two_word_flags+=("-A")
+    local_nonpersistent_flags+=("--actor=")
+    flags+=("--label=")
+    two_word_flags+=("--label")
+    two_word_flags+=("-l")
+    local_nonpersistent_flags+=("--label=")
+    flags+=("--title=")
+    two_word_flags+=("--title")
+    two_word_flags+=("-t")
+    local_nonpersistent_flags+=("--title=")
+    flags+=("--no=")
+    two_word_flags+=("--no")
+    two_word_flags+=("-n")
+    local_nonpersistent_flags+=("--no=")
+    flags+=("--by=")
+    two_word_flags+=("--by")
+    two_word_flags+=("-b")
+    local_nonpersistent_flags+=("--by=")
+    flags+=("--direction=")
+    two_word_flags+=("--direction")
+    two_word_flags+=("-d")
+    local_nonpersistent_flags+=("--direction=")
+    flags+=("--format=")
+    two_word_flags+=("--format")
+    two_word_flags+=("-f")
+    local_nonpersistent_flags+=("--format=")
+>>>>>>> remotes/upstream/master:misc/bash_completion/git-bug
 
     must_have_one_flag=()
     must_have_one_noun=()
@@ -769,7 +881,31 @@ _git-ticket_status_inreview()
     noun_aliases=()
 }
 
+<<<<<<< HEAD:misc/bash_completion/git-ticket
 _git-ticket_status_merged()
+=======
+_git-bug_rm()
+{
+    last_command="git-bug_rm"
+
+    command_aliases=()
+
+    commands=()
+
+    flags=()
+    two_word_flags=()
+    local_nonpersistent_flags=()
+    flags_with_completion=()
+    flags_completion=()
+
+
+    must_have_one_flag=()
+    must_have_one_noun=()
+    noun_aliases=()
+}
+
+_git-bug_select()
+>>>>>>> remotes/upstream/master:misc/bash_completion/git-bug
 {
     last_command="git-ticket_status_merged"
 
@@ -803,6 +939,16 @@ _git-ticket_status_proposed()
     flags_with_completion=()
     flags_completion=()
 
+<<<<<<< HEAD:misc/bash_completion/git-ticket
+=======
+    flags+=("--field=")
+    two_word_flags+=("--field")
+    local_nonpersistent_flags+=("--field=")
+    flags+=("--format=")
+    two_word_flags+=("--format")
+    two_word_flags+=("-f")
+    local_nonpersistent_flags+=("--format=")
+>>>>>>> remotes/upstream/master:misc/bash_completion/git-bug
 
     must_have_one_flag=()
     must_have_one_noun=()
@@ -996,6 +1142,7 @@ _git-ticket_user_key_add()
     flags_with_completion=()
     flags_completion=()
 
+<<<<<<< HEAD:misc/bash_completion/git-ticket
     flags+=("--file=")
     two_word_flags+=("--file")
     two_word_flags+=("-F")
@@ -1004,6 +1151,12 @@ _git-ticket_user_key_add()
     two_word_flags+=("--key")
     two_word_flags+=("-k")
     local_nonpersistent_flags+=("--key=")
+=======
+    flags+=("--format=")
+    two_word_flags+=("--format")
+    two_word_flags+=("-f")
+    local_nonpersistent_flags+=("--format=")
+>>>>>>> remotes/upstream/master:misc/bash_completion/git-bug
 
     must_have_one_flag=()
     must_have_one_noun=()
@@ -1066,6 +1219,19 @@ _git-ticket_user_ls()
     flags_with_completion=()
     flags_completion=()
 
+<<<<<<< HEAD:misc/bash_completion/git-ticket
+=======
+    flags+=("--open")
+    local_nonpersistent_flags+=("--open")
+    flags+=("--no-open")
+    local_nonpersistent_flags+=("--no-open")
+    flags+=("--port=")
+    two_word_flags+=("--port")
+    two_word_flags+=("-p")
+    local_nonpersistent_flags+=("--port=")
+    flags+=("--read-only")
+    local_nonpersistent_flags+=("--read-only")
+>>>>>>> remotes/upstream/master:misc/bash_completion/git-bug
 
     must_have_one_flag=()
     must_have_one_noun=()
@@ -1147,7 +1313,11 @@ _git-ticket_root_command()
     commands+=("ls-label")
     commands+=("pull")
     commands+=("push")
+<<<<<<< HEAD:misc/bash_completion/git-ticket
     commands+=("review")
+=======
+    commands+=("rm")
+>>>>>>> remotes/upstream/master:misc/bash_completion/git-bug
     commands+=("select")
     commands+=("show")
     commands+=("status")
@@ -1192,6 +1362,7 @@ __start_git-ticket()
     local commands=("git-ticket")
     local must_have_one_flag=()
     local must_have_one_noun=()
+    local has_completion_function
     local last_command
     local nouns=()
 

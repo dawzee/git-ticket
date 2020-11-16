@@ -5,7 +5,7 @@ import (
 
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/identity"
-	"github.com/daedaleanai/git-ticket/util/git"
+	"github.com/daedaleanai/git-ticket/repository"
 	"github.com/daedaleanai/git-ticket/util/timestamp"
 )
 
@@ -29,7 +29,7 @@ type CommentTimelineItem struct {
 	id        entity.Id
 	Author    identity.Interface
 	Message   string
-	Files     []git.Hash
+	Files     []repository.Hash
 	CreatedAt timestamp.Timestamp
 	LastEdit  timestamp.Timestamp
 	History   []CommentHistoryStep

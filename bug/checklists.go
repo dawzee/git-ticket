@@ -51,7 +51,7 @@ func initChecklistStore() error {
 		return fmt.Errorf("unable to get the current working directory: %q", err)
 	}
 
-	repo, err := repository.NewGitRepo(cwd, Witnesser)
+	repo, err := repository.NewGitRepo(cwd, []repository.ClockLoader{ClockLoader})
 	if err == repository.ErrNotARepo {
 		return fmt.Errorf("must be run from within a git repo")
 	}

@@ -6,7 +6,7 @@ Select a ticket for implicit use in future commands.
 
 Select a ticket for implicit use in future commands.
 
-This command allows you to omit any ticket <id> argument, for example:
+This command allows you to omit any ticket ID argument, for example:
   git ticket show
 instead of
   git ticket show 2f153ca
@@ -15,7 +15,7 @@ The complementary command is "git ticket deselect" performing the opposite opera
 
 
 ```
-git-ticket select <id> [flags]
+git-ticket select ID [flags]
 ```
 
 ### Examples

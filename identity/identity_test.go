@@ -67,7 +67,7 @@ func TestIdentityCommitLoad(t *testing.T) {
 				name:  "René Descartes",
 				email: "rene.descartes@example.com",
 				keys: []*Key{
-					{ArmoredPublicKey: createPubkey(t)},
+					{armoredPublicKey: repository.CreatePubkey(t)},
 				},
 			},
 			{
@@ -75,7 +75,7 @@ func TestIdentityCommitLoad(t *testing.T) {
 				name:  "René Descartes",
 				email: "rene.descartes@example.com",
 				keys: []*Key{
-					{ArmoredPublicKey: createPubkey(t)},
+					{armoredPublicKey: repository.CreatePubkey(t)},
 				},
 			},
 			{
@@ -83,7 +83,7 @@ func TestIdentityCommitLoad(t *testing.T) {
 				name:  "René Descartes",
 				email: "rene.descartes@example.com",
 				keys: []*Key{
-					{ArmoredPublicKey: createPubkey(t)},
+					{armoredPublicKey: repository.CreatePubkey(t)},
 				},
 			},
 		},
@@ -102,17 +102,12 @@ func TestIdentityCommitLoad(t *testing.T) {
 
 	// add more version
 
-	identity.Mutate(func(orig Mutator) Mutator {
-
-		return orig
-	})
-
 	identity.addVersionForTest(&Version{
 		time:  201,
 		name:  "René Descartes",
 		email: "rene.descartes@example.com",
 		keys: []*Key{
-			{ArmoredPublicKey: createPubkey(t)},
+			{armoredPublicKey: repository.CreatePubkey(t)},
 		},
 	})
 
@@ -121,7 +116,7 @@ func TestIdentityCommitLoad(t *testing.T) {
 		name:  "René Descartes",
 		email: "rene.descartes@example.com",
 		keys: []*Key{
-			{ArmoredPublicKey: createPubkey(t)},
+			{armoredPublicKey: repository.CreatePubkey(t)},
 		},
 	})
 
@@ -140,9 +135,27 @@ func TestIdentityCommitLoad(t *testing.T) {
 func loadKeys(identity *Identity) {
 	for _, v := range identity.versions {
 		for _, k := range v.keys {
-			k.GetPublicKey()
+			k.PublicKey()
 		}
 	}
+}
+
+func TestIdentityMutate(t *testing.T) {
+	identity := NewIdentity("René Descartes", "rene.descartes@example.com")
+
+	assert.Len(t, identity.versions, 1)
+
+	identity.Mutate(func(orig Mutator) Mutator {
+		orig.Email = "rene@descartes.fr"
+		orig.Name = "René"
+		orig.Login = "rene"
+		return orig
+	})
+
+	assert.Len(t, identity.versions, 2)
+	assert.Equal(t, identity.Email(), "rene@descartes.fr")
+	assert.Equal(t, identity.Name(), "René")
+	assert.Equal(t, identity.Login(), "rene")
 }
 
 func commitsAreSet(t *testing.T, identity *Identity) {
@@ -161,7 +174,7 @@ func TestIdentity_ValidKeysAtTime(t *testing.T) {
 				name:  "René Descartes",
 				email: "rene.descartes@example.com",
 				keys: []*Key{
-					{ArmoredPublicKey: "pubkeyA"},
+					{armoredPublicKey: "pubkeyA"},
 				},
 			},
 			{
@@ -169,7 +182,7 @@ func TestIdentity_ValidKeysAtTime(t *testing.T) {
 				name:  "René Descartes",
 				email: "rene.descartes@example.com",
 				keys: []*Key{
-					{ArmoredPublicKey: "pubkeyB"},
+					{armoredPublicKey: "pubkeyB"},
 				},
 			},
 			{
@@ -177,7 +190,7 @@ func TestIdentity_ValidKeysAtTime(t *testing.T) {
 				name:  "René Descartes",
 				email: "rene.descartes@example.com",
 				keys: []*Key{
-					{ArmoredPublicKey: "pubkeyC"},
+					{armoredPublicKey: "pubkeyC"},
 				},
 			},
 			{
@@ -185,7 +198,7 @@ func TestIdentity_ValidKeysAtTime(t *testing.T) {
 				name:  "René Descartes",
 				email: "rene.descartes@example.com",
 				keys: []*Key{
-					{ArmoredPublicKey: "pubkeyD"},
+					{armoredPublicKey: "pubkeyD"},
 				},
 			},
 			{
@@ -193,20 +206,20 @@ func TestIdentity_ValidKeysAtTime(t *testing.T) {
 				name:  "René Descartes",
 				email: "rene.descartes@example.com",
 				keys: []*Key{
-					{ArmoredPublicKey: "pubkeyE"},
+					{armoredPublicKey: "pubkeyE"},
 				},
 			},
 		},
 	}
 
 	assert.Nil(t, identity.ValidKeysAtTime(10))
-	assert.Equal(t, identity.ValidKeysAtTime(100), []*Key{{ArmoredPublicKey: "pubkeyA"}})
-	assert.Equal(t, identity.ValidKeysAtTime(140), []*Key{{ArmoredPublicKey: "pubkeyA"}})
-	assert.Equal(t, identity.ValidKeysAtTime(200), []*Key{{ArmoredPublicKey: "pubkeyB"}})
-	assert.Equal(t, identity.ValidKeysAtTime(201), []*Key{{ArmoredPublicKey: "pubkeyD"}})
-	assert.Equal(t, identity.ValidKeysAtTime(202), []*Key{{ArmoredPublicKey: "pubkeyD"}})
-	assert.Equal(t, identity.ValidKeysAtTime(300), []*Key{{ArmoredPublicKey: "pubkeyE"}})
-	assert.Equal(t, identity.ValidKeysAtTime(3000), []*Key{{ArmoredPublicKey: "pubkeyE"}})
+	assert.Equal(t, identity.ValidKeysAtTime(100), []*Key{{armoredPublicKey: "pubkeyA"}})
+	assert.Equal(t, identity.ValidKeysAtTime(140), []*Key{{armoredPublicKey: "pubkeyA"}})
+	assert.Equal(t, identity.ValidKeysAtTime(200), []*Key{{armoredPublicKey: "pubkeyB"}})
+	assert.Equal(t, identity.ValidKeysAtTime(201), []*Key{{armoredPublicKey: "pubkeyD"}})
+	assert.Equal(t, identity.ValidKeysAtTime(202), []*Key{{armoredPublicKey: "pubkeyD"}})
+	assert.Equal(t, identity.ValidKeysAtTime(300), []*Key{{armoredPublicKey: "pubkeyE"}})
+	assert.Equal(t, identity.ValidKeysAtTime(3000), []*Key{{armoredPublicKey: "pubkeyE"}})
 }
 
 // Test the immutable or mutable metadata search

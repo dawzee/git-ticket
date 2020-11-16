@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/MichaelMure/go-term-text"
+	text "github.com/MichaelMure/go-term-text"
 	"github.com/awesome-gocui/gocui"
 	"github.com/dustin/go-humanize"
 
 	"github.com/daedaleanai/git-ticket/cache"
 	"github.com/daedaleanai/git-ticket/entity"
+	"github.com/daedaleanai/git-ticket/query"
 	"github.com/daedaleanai/git-ticket/util/colors"
 )
 
@@ -23,10 +23,20 @@ const bugTableInstructionView = "bugTableInstructionView"
 const defaultRemote = "origin"
 const defaultQuery = ""
 
+var bugTableHelp = helpBar{
+	{"q", "Quit"},
+	{"s", "Search"},
+	{"←↓↑→,hjkl", "Navigation"},
+	{"↵", "Open bug"},
+	{"n", "New bug"},
+	{"i", "Pull"},
+	{"o", "Push"},
+}
+
 type bugTable struct {
 	repo         *cache.RepoCache
 	queryStr     string
-	query        *cache.Query
+	query        *query.Query
 	allIds       []entity.Id
 	excerpts     []*cache.BugExcerpt
 	pageCursor   int
@@ -34,14 +44,14 @@ type bugTable struct {
 }
 
 func newBugTable(c *cache.RepoCache) *bugTable {
-	query, err := cache.ParseQuery(defaultQuery)
+	q, err := query.Parse(defaultQuery)
 	if err != nil {
 		panic(err)
 	}
 
 	return &bugTable{
 		repo:         c,
-		query:        query,
+		query:        q,
 		queryStr:     defaultQuery,
 		pageCursor:   0,
 		selectCursor: 0,
@@ -56,7 +66,7 @@ func (bt *bugTable) layout(g *gocui.Gui) error {
 		return nil
 	}
 
-	v, err := g.SetView(bugTableHeaderView, -1, -1, maxX, 3, 0)
+	v, err := g.SetView(bugTableHeaderView, -1, -1, maxX, 1, 0)
 
 	if err != nil {
 		if !gocui.IsUnknownView(err) {
@@ -69,7 +79,7 @@ func (bt *bugTable) layout(g *gocui.Gui) error {
 	v.Clear()
 	bt.renderHeader(v, maxX)
 
-	v, err = g.SetView(bugTableView, -1, 1, maxX, maxY-3, 0)
+	v, err = g.SetView(bugTableView, -1, 0, maxX, maxY-3, 0)
 
 	if err != nil {
 		if !gocui.IsUnknownView(err) {
@@ -81,7 +91,7 @@ func (bt *bugTable) layout(g *gocui.Gui) error {
 		v.SelFgColor = gocui.ColorBlack
 	}
 
-	_, viewHeight := v.Size()
+	viewWidth, viewHeight := v.Size()
 	err = bt.paginate(viewHeight)
 	if err != nil {
 		return err
@@ -93,7 +103,7 @@ func (bt *bugTable) layout(g *gocui.Gui) error {
 	}
 
 	v.Clear()
-	bt.render(v, maxX)
+	bt.render(v, viewWidth)
 
 	v, err = g.SetView(bugTableFooterView, -1, maxY-4, maxX, maxY, 0)
 
@@ -116,10 +126,10 @@ func (bt *bugTable) layout(g *gocui.Gui) error {
 		}
 
 		v.Frame = false
-		v.BgColor = gocui.ColorBlue
-
-		_, _ = fmt.Fprintf(v, "[q] Quit [s] Search [←↓↑→,hjkl] Navigation [↵] Open bug [n] New bug [i] Pull [o] Push")
+		v.FgColor = gocui.ColorWhite
 	}
+	v.Clear()
+	bt.renderHelp(v, maxX)
 
 	_, err = g.SetCurrentView(bugTableView)
 	return err
@@ -267,14 +277,14 @@ func (bt *bugTable) getTableLength() int {
 
 func (bt *bugTable) getColumnWidths(maxX int) map[string]int {
 	m := make(map[string]int)
-	m["id"] = 9
-	m["status"] = 7
+	m["id"] = 7
+	m["status"] = 6
 
 	left := maxX - 5 - m["id"] - m["status"]
 
-	m["comments"] = 10
+	m["comments"] = 3
 	left -= m["comments"]
-	m["lastEdit"] = 19
+	m["lastEdit"] = 14
 	left -= m["lastEdit"]
 
 	m["author"] = minInt(maxInt(left/3, 15), 10+left/8)
@@ -287,19 +297,20 @@ func (bt *bugTable) render(v *gocui.View, maxX int) {
 	columnWidths := bt.getColumnWidths(maxX)
 
 	for _, excerpt := range bt.excerpts {
-		summaryTxt := fmt.Sprintf("%4d 💬", excerpt.LenComments)
-		if excerpt.LenComments <= 0 {
+		summaryTxt := fmt.Sprintf("%3d", excerpt.LenComments-1)
+		if excerpt.LenComments-1 <= 0 {
 			summaryTxt = ""
 		}
-		if excerpt.LenComments > 9999 {
-			summaryTxt = "    ∞ 💬"
+		if excerpt.LenComments-1 > 999 {
+			summaryTxt = "  ∞"
 		}
 
 		var labelsTxt strings.Builder
 		for _, l := range excerpt.Labels {
+			labelsTxt.WriteString(" ")
 			lc256 := l.Color().Term256()
 			labelsTxt.WriteString(lc256.Escape())
-			labelsTxt.WriteString(" ◼")
+			labelsTxt.WriteString("◼")
 			labelsTxt.WriteString(lc256.Unescape())
 		}
 
@@ -314,14 +325,14 @@ func (bt *bugTable) render(v *gocui.View, maxX int) {
 			authorDisplayName = excerpt.LegacyAuthor.DisplayName()
 		}
 
-		lastEditTime := time.Unix(excerpt.EditUnixTime, 0)
+		lastEditTime := excerpt.EditTime()
 
-		id := text.LeftPadMaxLine(excerpt.Id.Human(), columnWidths["id"], 1)
-		status := text.LeftPadMaxLine(excerpt.Status.String(), columnWidths["status"], 1)
+		id := text.LeftPadMaxLine(excerpt.Id.Human(), columnWidths["id"], 0)
+		status := text.LeftPadMaxLine(excerpt.Status.String(), columnWidths["status"], 0)
 		labels := text.TruncateMax(labelsTxt.String(), minInt(columnWidths["title"]-2, 10))
-		title := text.LeftPadMaxLine(excerpt.Title, columnWidths["title"]-text.Len(labels), 1)
-		author := text.LeftPadMaxLine(authorDisplayName, columnWidths["author"], 1)
-		comments := text.LeftPadMaxLine(summaryTxt, columnWidths["comments"], 1)
+		title := text.LeftPadMaxLine(strings.TrimSpace(excerpt.Title), columnWidths["title"]-text.Len(labels), 0)
+		author := text.LeftPadMaxLine(authorDisplayName, columnWidths["author"], 0)
+		comments := text.LeftPadMaxLine(summaryTxt, columnWidths["comments"], 0)
 		lastEdit := text.LeftPadMaxLine(humanize.Time(lastEditTime), columnWidths["lastEdit"], 1)
 
 		_, _ = fmt.Fprintf(v, "%s %s %s%s %s %s %s\n",
@@ -341,19 +352,22 @@ func (bt *bugTable) render(v *gocui.View, maxX int) {
 func (bt *bugTable) renderHeader(v *gocui.View, maxX int) {
 	columnWidths := bt.getColumnWidths(maxX)
 
-	id := text.LeftPadMaxLine("ID", columnWidths["id"], 1)
-	status := text.LeftPadMaxLine("STATUS", columnWidths["status"], 1)
-	title := text.LeftPadMaxLine("TITLE", columnWidths["title"], 1)
-	author := text.LeftPadMaxLine("AUTHOR", columnWidths["author"], 1)
-	comments := text.LeftPadMaxLine("COMMENTS", columnWidths["comments"], 1)
+	id := text.LeftPadMaxLine("ID", columnWidths["id"], 0)
+	status := text.LeftPadMaxLine("STATUS", columnWidths["status"], 0)
+	title := text.LeftPadMaxLine("TITLE", columnWidths["title"], 0)
+	author := text.LeftPadMaxLine("AUTHOR", columnWidths["author"], 0)
+	comments := text.LeftPadMaxLine("CMT", columnWidths["comments"], 0)
 	lastEdit := text.LeftPadMaxLine("LAST EDIT", columnWidths["lastEdit"], 1)
 
-	_, _ = fmt.Fprintf(v, "\n")
 	_, _ = fmt.Fprintf(v, "%s %s %s %s %s %s\n", id, status, title, author, comments, lastEdit)
 }
 
 func (bt *bugTable) renderFooter(v *gocui.View, maxX int) {
 	_, _ = fmt.Fprintf(v, " \nShowing %d of %d bugs", len(bt.excerpts), len(bt.allIds))
+}
+
+func (bt *bugTable) renderHelp(v *gocui.View, maxX int) {
+	_, _ = fmt.Fprint(v, bugTableHelp.Render(maxX))
 }
 
 func (bt *bugTable) cursorDown(g *gocui.Gui, v *gocui.View) error {
@@ -436,6 +450,10 @@ func (bt *bugTable) newBug(g *gocui.Gui, v *gocui.View) error {
 }
 
 func (bt *bugTable) openBug(g *gocui.Gui, v *gocui.View) error {
+	if len(bt.excerpts) == 0 {
+		// There are no open bugs, just do nothing
+		return nil
+	}
 	id := bt.excerpts[bt.selectCursor].Id
 	b, err := bt.repo.ResolveBug(id)
 	if err != nil {

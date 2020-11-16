@@ -4,7 +4,6 @@ package identity
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/repository"
-	"github.com/daedaleanai/git-ticket/util/git"
 	"github.com/daedaleanai/git-ticket/util/lamport"
 	"github.com/daedaleanai/git-ticket/util/timestamp"
 )
@@ -22,6 +20,8 @@ const identityRefPattern = "refs/identities/"
 const identityRemoteRefPattern = "refs/remotes/%s/identities/"
 const versionEntryName = "version"
 const identityConfigKey = "git-bug.identity"
+
+const identityEditClockName = "identity-edit"
 
 var ErrNonFastForwardMerge = errors.New("non fast-forward identity merge")
 var ErrNoIdentitySet = errors.New("No identity is set.\n" +
@@ -40,7 +40,7 @@ type Identity struct {
 	versions []*Version
 
 	// not serialized
-	lastCommit git.Hash
+	lastCommit repository.Hash
 }
 
 func NewIdentity(name string, email string) *Identity {
@@ -56,7 +56,12 @@ func NewIdentity(name string, email string) *Identity {
 	}
 }
 
-func NewIdentityFull(name string, email string, login string, avatarUrl string, phabID string) *Identity {
+func NewIdentityFull(name string, email string, login string, avatarUrl string, phabID string, key *Key) *Identity {
+	var keys []*Key
+	if key != nil {
+		keys = []*Key{key}
+	}
+
 	return &Identity{
 		id: entity.UnsetId,
 		versions: []*Version{
@@ -67,9 +72,32 @@ func NewIdentityFull(name string, email string, login string, avatarUrl string, 
 				avatarURL: avatarUrl,
 				phabID:    phabID,
 				nonce:     makeNonce(20),
+				keys:      keys,
 			},
 		},
 	}
+}
+
+// NewFromGitUser will query the repository for user detail and
+// build the corresponding Identity
+func NewFromGitUser(repo repository.Repo) (*Identity, error) {
+	name, err := repo.GetUserName()
+	if err != nil {
+		return nil, err
+	}
+	if name == "" {
+		return nil, errors.New("user name is not configured in git yet. Please use `git config --global user.name \"John Doe\"`")
+	}
+
+	email, err := repo.GetUserEmail()
+	if err != nil {
+		return nil, err
+	}
+	if email == "" {
+		return nil, errors.New("user name is not configured in git yet. Please use `git config --global user.email johndoe@example.com`")
+	}
+
+	return NewIdentity(name, email), nil
 }
 
 // MarshalJSON will only serialize the id
@@ -87,15 +115,25 @@ func (i *Identity) UnmarshalJSON(data []byte) error {
 }
 
 // ReadLocal load a local Identity from the identities data available in git
-func ReadLocal(repo repository.Repo, id entity.Id) (*Identity, error) {
+func ReadLocal(repo repository.ClockedRepo, id entity.Id) (*Identity, error) {
 	ref := fmt.Sprintf("%s%s", identityRefPattern, id)
-	return read(repo, ref)
+	i, err := read(repo, ref)
+	if err != nil {
+		return nil, err
+	}
+
+	err = informClockAboutLocalIdentity(repo, i)
+	if err != nil {
+		return nil, err
+	}
+
+	return i, nil
 }
 
 // ReadRemote load a remote Identity from the identities data available in git
-func ReadRemote(repo repository.Repo, remote string, id string) (*Identity, error) {
-	ref := fmt.Sprintf(identityRemoteRefPattern, remote) + id
-	return read(repo, ref)
+func ReadRemote(repo repository.ClockedRepo, remote string, id string) (*Identity, error) {
+       ref := fmt.Sprintf(identityRemoteRefPattern, remote) + id
+       return read(repo, ref)
 }
 
 // read will load and parse an identity from git
@@ -119,7 +157,7 @@ func read(repo repository.Repo, ref string) (*Identity, error) {
 	}
 
 	for _, hash := range hashes {
-		entries, err := repo.ListEntries(hash)
+		entries, err := repo.ReadTree(hash)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't list git tree entries")
 		}
@@ -156,6 +194,22 @@ func read(repo repository.Repo, ref string) (*Identity, error) {
 	return i, nil
 }
 
+func informClockAboutLocalIdentity(repo repository.ClockedRepo, i *Identity) error {
+	editClock, err := repo.GetOrCreateClock(identityEditClockName)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range i.versions {
+		err = editClock.Witness(v.time)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 type StreamedIdentity struct {
 	Identity *Identity
 	Err      error
@@ -163,7 +217,26 @@ type StreamedIdentity struct {
 
 // ReadAllLocalIdentities read and parse all local Identity
 func ReadAllLocalIdentities(repo repository.ClockedRepo) <-chan StreamedIdentity {
-	return readAllIdentities(repo, identityRefPattern)
+	stream := readAllIdentities(repo, identityRefPattern)
+
+	out := make(chan StreamedIdentity)
+
+	go func() {
+		defer close(out)
+
+		for i := range stream {
+			if i.Identity != nil {
+				err := informClockAboutLocalIdentity(repo, i.Identity)
+				if err != nil {
+					i = StreamedIdentity{Err: err}
+				}
+			}
+
+			out <- i
+		}
+	}()
+
+	return out
 }
 
 // ReadAllRemoteIdentities read and parse all remote Identity for a given remote
@@ -173,7 +246,7 @@ func ReadAllRemoteIdentities(repo repository.ClockedRepo, remote string) <-chan 
 }
 
 // Read and parse all available bug with a given ref prefix
-func readAllIdentities(repo repository.ClockedRepo, refPrefix string) <-chan StreamedIdentity {
+func readAllIdentities(repo repository.Repo, refPrefix string) <-chan StreamedIdentity {
 	out := make(chan StreamedIdentity)
 
 	go func() {
@@ -200,88 +273,6 @@ func readAllIdentities(repo repository.ClockedRepo, refPrefix string) <-chan Str
 	return out
 }
 
-// NewFromGitUser will query the repository for user detail and
-// build the corresponding Identity
-func NewFromGitUser(repo repository.Repo) (*Identity, error) {
-	name, err := repo.GetUserName()
-	if err != nil {
-		return nil, err
-	}
-	if name == "" {
-		return nil, errors.New("user name is not configured in git yet. Please use `git config --global user.name \"John Doe\"`")
-	}
-
-	email, err := repo.GetUserEmail()
-	if err != nil {
-		return nil, err
-	}
-	if email == "" {
-		return nil, errors.New("user name is not configured in git yet. Please use `git config --global user.email johndoe@example.com`")
-	}
-
-	return NewIdentity(name, email), nil
-}
-
-// SetUserIdentity store the user identity's id in the git config
-func SetUserIdentity(repo repository.RepoConfig, identity *Identity) error {
-	return repo.LocalConfig().StoreString(identityConfigKey, identity.Id().String())
-}
-
-// GetUserIdentity read the current user identity, set with a git config entry
-func GetUserIdentity(repo repository.Repo) (*Identity, error) {
-	id, err := GetUserIdentityId(repo)
-	if err != nil {
-		return nil, err
-	}
-
-	i, err := ReadLocal(repo, id)
-	if err == ErrIdentityNotExist {
-		innerErr := repo.LocalConfig().RemoveAll(identityConfigKey)
-		if innerErr != nil {
-			_, _ = fmt.Fprintln(os.Stderr, errors.Wrap(innerErr, "can't clear user identity").Error())
-		}
-		return nil, err
-	}
-
-	return i, nil
-}
-
-func GetUserIdentityId(repo repository.Repo) (entity.Id, error) {
-	configs, err := repo.LocalConfig().ReadAll(identityConfigKey)
-	if err != nil {
-		return entity.UnsetId, err
-	}
-
-	if len(configs) == 0 {
-		return entity.UnsetId, ErrNoIdentitySet
-	}
-
-	if len(configs) > 1 {
-		return entity.UnsetId, ErrMultipleIdentitiesSet
-	}
-
-	var id entity.Id
-	for _, val := range configs {
-		id = entity.Id(val)
-	}
-
-	if err := id.Validate(); err != nil {
-		return entity.UnsetId, err
-	}
-
-	return id, nil
-}
-
-// IsUserIdentitySet say if the user has set his identity
-func IsUserIdentitySet(repo repository.Repo) (bool, error) {
-	configs, err := repo.LocalConfig().ReadAll(identityConfigKey)
-	if err != nil {
-		return false, err
-	}
-
-	return len(configs) == 1, nil
-}
-
 type Mutator struct {
 	Name      string
 	Login     string
@@ -291,7 +282,7 @@ type Mutator struct {
 	Keys      []*Key
 }
 
-// Mutate allow to create a new version of the Identity
+// Mutate allow to create a new version of the Identity in one go
 func (i *Identity) Mutate(f func(orig Mutator) Mutator) {
 	orig := Mutator{
 		Name:      i.Name(),
@@ -315,6 +306,31 @@ func (i *Identity) Mutate(f func(orig Mutator) Mutator) {
 	})
 }
 
+func AddKeyMutator(key *Key) func(mutator Mutator) Mutator {
+	return func(mutator Mutator) Mutator {
+		mutator.Keys = append(mutator.Keys, key)
+		return mutator
+	}
+}
+
+func RemoveKeyMutator(fingerprint string, removedKey **Key) func(mutator Mutator) Mutator {
+	return func(mutator Mutator) Mutator {
+		for j, key := range mutator.Keys {
+			if key.Fingerprint() == fingerprint {
+				if removedKey != nil {
+					*removedKey = key
+				}
+				keys := make([]*Key, len(mutator.Keys) - 1)
+				copy(keys, mutator.Keys[0:j])
+				copy(keys[j:], mutator.Keys[j+1:])
+				mutator.Keys = keys
+				break
+			}
+		}
+		return mutator
+	}
+}
+
 // Write the identity into the Repository. In particular, this ensure that
 // the Id is properly set.
 func (i *Identity) Commit(repo repository.ClockedRepo) error {
@@ -336,7 +352,15 @@ func (i *Identity) Commit(repo repository.ClockedRepo) error {
 		}
 
 		// get the times where new versions starts to be valid
-		v.time = repo.EditTime()
+		clock, err := repo.GetOrCreateClock(identityEditClockName)
+		if err != nil {
+			return err
+		}
+		v.time, err = clock.Increment()
+		if err != nil {
+			return err
+		}
+
 		v.unixTime = time.Now().Unix()
 
 		blobHash, err := v.Write(repo)
@@ -354,7 +378,7 @@ func (i *Identity) Commit(repo repository.ClockedRepo) error {
 			return err
 		}
 
-		var commitHash git.Hash
+		var commitHash repository.Hash
 		if i.lastCommit != "" {
 			commitHash, err = repo.StoreCommitWithParent(treeHash, i.lastCommit)
 		} else {
@@ -623,6 +647,10 @@ func (i *Identity) MutableMetadata() map[string]string {
 	}
 
 	return metadata
+}
+
+func (i *Identity) Versions() []*Version {
+	return i.versions
 }
 
 // addVersionForTest add a new version to the identity

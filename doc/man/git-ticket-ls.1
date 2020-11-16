@@ -1,6 +1,6 @@
 .nh
 .TH GIT\-BUG(1)Apr 2019
-Generated from git\-ticket's source code
+Generated from git\-bug's source code
 
 .SH NAME
 .PP
@@ -9,7 +9,7 @@ git\-ticket\-ls \- List tickets.
 
 .SH SYNOPSIS
 .PP
-\fBgit\-ticket ls [] [flags]\fP
+\fBgit\-ticket ls [QUERY] [flags]\fP
 
 
 .SH DESCRIPTION
@@ -34,8 +34,12 @@ You can pass an additional query to filter and order the list. This query can be
 	Filter by participant
 
 .PP
-\fB\-A\fP, \fB\-\-actor\fP=[]
+\fB\-\-actor\fP=[]
 	Filter by actor
+
+.PP
+\fB\-A\fP, \fB\-\-assignee\fP=[]
+	Filter by assignee
 
 .PP
 \fB\-l\fP, \fB\-\-label\fP=[]
@@ -58,6 +62,10 @@ You can pass an additional query to filter and order the list. This query can be
 	Select the sorting direction. Valid values are [asc,desc]
 
 .PP
+\fB\-f\fP, \fB\-\-format\fP="default"
+	Select the output formatting style. Valid values are [default,plain,json,org\-mode]
+
+.PP
 \fB\-h\fP, \fB\-\-help\fP[=false]
 	help for ls
 
@@ -67,11 +75,11 @@ You can pass an additional query to filter and order the list. This query can be
 .RS
 
 .nf
-List open tickets sorted by last edition with a query:
-git ticket ls status:open sort:edit\-desc
+List vetted tickets sorted by last edition with a query:
+git ticket ls status:vetted sort:edit\-desc
 
-List closed tickets sorted by creation with flags:
-git ticket ls \-\-status closed \-\-by creation
+List merged tickets sorted by creation with flags:
+git ticket ls \-\-status merged \-\-by creation
 
 
 .fi

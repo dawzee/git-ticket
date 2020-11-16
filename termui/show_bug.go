@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/MichaelMure/go-term-text"
+	text "github.com/MichaelMure/go-term-text"
 	"github.com/awesome-gocui/gocui"
 
 	"github.com/daedaleanai/git-ticket/bug"
@@ -20,6 +20,16 @@ const showBugInstructionView = "showBugInstructionView"
 const showBugHeaderView = "showBugHeaderView"
 
 const timeLayout = "Jan 2 2006"
+
+var showBugHelp = helpBar{
+	{"q", "Save and return"},
+	{"←↓↑→,hjkl", "Navigation"},
+	{"o", "Toggle open/close"},
+	{"e", "Edit"},
+	{"c", "Comment"},
+	{"t", "Change title"},
+	{"r", "Review"},
+}
 
 type showBug struct {
 	cache              *cache.RepoCache
@@ -92,11 +102,11 @@ func (sb *showBug) layout(g *gocui.Gui) error {
 
 		sb.childViews = append(sb.childViews, showBugInstructionView)
 		v.Frame = false
-		v.BgColor = gocui.ColorBlue
+		v.FgColor = gocui.ColorWhite
 	}
 
 	v.Clear()
-	_, _ = fmt.Fprintf(v, "[q] Save and return [←↓↑→,hjkl] Navigation [e] Edit [c] Comment [t] Change title [r] Review")
+	_, _ = fmt.Fprint(v, showBugHelp.Render(maxX))
 
 	validStates, err := sb.bug.Snapshot().NextStates()
 	for _, vs := range validStates {
@@ -240,10 +250,10 @@ func (sb *showBug) renderMain(g *gocui.Gui, mainView *gocui.View) error {
 		colors.Bold(snap.Title),
 		colors.Yellow(snap.Status),
 		colors.Magenta(snap.Author.DisplayName()),
-		snap.CreatedAt.Format(timeLayout),
+		snap.CreateTime.Format(timeLayout),
 		edited,
 	)
-	bugHeader, lines := text.Wrap(bugHeader, maxX)
+	bugHeader, lines := text.Wrap(bugHeader, maxX, text.WrapIndent("   "))
 
 	v, err := sb.createOpView(g, showBugHeaderView, x0, y0, maxX+1, lines, false)
 	if err != nil {

@@ -3,27 +3,50 @@ package commands
 import (
 	"fmt"
 
-	"github.com/daedaleanai/git-ticket/cache"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+
 	"github.com/daedaleanai/git-ticket/identity"
 	"github.com/daedaleanai/git-ticket/input"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
-	"github.com/spf13/cobra"
+	"github.com/daedaleanai/git-ticket/validate"
 )
 
-var (
-	keyAddArmoredFile string
-	keyAddArmored     string
-)
+type userKeyAddOptions struct {
+	ArmoredFile string
+	Armored     string
+}
 
-func runKeyAdd(cmd *cobra.Command, args []string) error {
-	backend, err := cache.NewRepoCache(repo)
-	if err != nil {
-		return err
+func newUserKeyAddCommand() *cobra.Command {
+	env := newEnv()
+	options := userKeyAddOptions{}
+
+	cmd := &cobra.Command{
+		Use:      "add [<user-id>]",
+		Short:    "Add a PGP key from a user.",
+		PreRunE:  loadBackendEnsureUser(env),
+		PostRunE: closeBackend(env),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runUserKeyAdd(env, options, args)
+		},
 	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
 
-	id, args, err := ResolveUser(backend, args)
+	flags := cmd.Flags()
+	flags.SortFlags = false
+
+	flags.StringVarP(&options.ArmoredFile, "file", "F", "",
+		"Take the armored PGP public key from the given file. Use - to read the message from the standard input",
+	)
+
+	flags.StringVarP(&options.Armored, "key", "k", "",
+		"Provide the armored PGP public key from the command line",
+	)
+
+	return cmd
+}
+
+
+func runUserKeyAdd(env *Env, opts userKeyAddOptions, args []string) error {
+	id, args, err := ResolveUser(env.backend, args)
 	if err != nil {
 		return err
 	}
@@ -32,15 +55,15 @@ func runKeyAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unexpected arguments: %s", args)
 	}
 
-	if keyAddArmoredFile != "" && keyAddArmored == "" {
-		keyAddArmored, err = input.TextFileInput(keyAddArmoredFile)
+	if opts.ArmoredFile != "" && opts.Armored == "" {
+		opts.Armored, err = input.TextFileInput(opts.ArmoredFile)
 		if err != nil {
 			return err
 		}
 	}
 
-	if keyAddArmoredFile == "" && keyAddArmored == "" {
-		keyAddArmored, err = input.IdentityVersionKeyEditorInput(backend)
+	if opts.ArmoredFile == "" && opts.Armored == "" {
+		opts.Armored, err = input.IdentityVersionKeyEditorInput(env.repo, "")
 		if err == input.ErrEmptyMessage {
 			fmt.Println("Empty PGP key, aborting.")
 			return nil
@@ -50,17 +73,21 @@ func runKeyAdd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	key, err := identity.NewKey(keyAddArmored)
-
+	key, err := identity.NewKeyFromArmored(opts.Armored)
 	if err != nil {
 		return err
 	}
 
-	err = id.Mutate(func(mutator identity.Mutator) identity.Mutator {
-		mutator.Keys = append(mutator.Keys, key)
-		return mutator
-	})
+	validator, err := validate.NewValidator(env.backend)
+	if err != nil {
+		return errors.Wrap(err, "failed to create validator")
+	}
+	commitHash := validator.KeyCommitHash(key.PublicKey().KeyId)
+	if commitHash != "" {
+		return fmt.Errorf("key id %d is already used by the key introduced in commit %s", key.PublicKey().KeyId, commitHash)
+	}
 
+	err = id.Mutate(identity.AddKeyMutator(key))
 	if err != nil {
 		return err
 	}
@@ -68,23 +95,4 @@ func runKeyAdd(cmd *cobra.Command, args []string) error {
 	return id.Commit()
 }
 
-var keyAddCmd = &cobra.Command{
-	Use:     "add [<user-id>]",
-	Short:   "Add a PGP key from a user.",
-	PreRunE: loadRepoEnsureUser,
-	RunE:    runKeyAdd,
-}
 
-func init() {
-	keyCmd.AddCommand(keyAddCmd)
-
-	keyAddCmd.Flags().SortFlags = false
-
-	keyAddCmd.Flags().StringVarP(&keyAddArmoredFile, "file", "F", "",
-		"Take the armored PGP public key from the given file. Use - to read the message from the standard input",
-	)
-
-	keyAddCmd.Flags().StringVarP(&keyAddArmored, "key", "k", "",
-		"Provide the armored PGP public key from the command line",
-	)
-}

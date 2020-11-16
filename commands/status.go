@@ -1,41 +1,40 @@
 package commands
 
 import (
-	"fmt"
-
-	"github.com/daedaleanai/git-ticket/cache"
-	"github.com/daedaleanai/git-ticket/commands/select"
-	"github.com/daedaleanai/git-ticket/util/interrupt"
 	"github.com/spf13/cobra"
+
+	_select "github.com/daedaleanai/git-ticket/commands/select"
 )
 
-func runStatus(cmd *cobra.Command, args []string) error {
-	backend, err := cache.NewRepoCache(repo)
-	if err != nil {
-		return err
-	}
-	defer backend.Close()
-	interrupt.RegisterCleaner(backend.Close)
+func newStatusCommand() *cobra.Command {
+	env := newEnv()
 
-	b, args, err := _select.ResolveBug(backend, args)
+	cmd := &cobra.Command{
+		Use:      "status [ID]",
+		Short:    "Display or change a ticket status.",
+		PreRunE:  loadBackend(env),
+		PostRunE: closeBackend(env),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runStatus(env, args)
+		},
+	}
+
+	for setCmd := range newStatusSetCommands() {
+		cmd.AddCommand(setCmd)
+	}
+
+	return cmd
+}
+
+func runStatus(env *Env, args []string) error {
+	b, args, err := _select.ResolveBug(env.backend, args)
 	if err != nil {
 		return err
 	}
 
 	snap := b.Snapshot()
 
-	fmt.Println(snap.Status)
+	env.out.Println(snap.Status)
 
 	return nil
-}
-
-var statusCmd = &cobra.Command{
-	Use:     "status [<id>]",
-	Short:   "Display or change a ticket status.",
-	PreRunE: loadRepo,
-	RunE:    runStatus,
-}
-
-func init() {
-	RootCmd.AddCommand(statusCmd)
 }

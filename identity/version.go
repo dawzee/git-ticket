@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/daedaleanai/git-ticket/repository"
-	"github.com/daedaleanai/git-ticket/util/git"
 	"github.com/daedaleanai/git-ticket/util/lamport"
 	"github.com/daedaleanai/git-ticket/util/text"
-	"github.com/pkg/errors"
 )
 
 const formatVersion = 1
@@ -20,6 +20,9 @@ type Version struct {
 	// The lamport time at which this version become effective
 	// The reference time is the bug edition lamport clock
 	// It must be the first field in this struct due to https://github.com/golang/go/issues/599
+	//
+	// TODO: BREAKING CHANGE - this need to actually be one edition lamport time **per entity**
+	// This is not a problem right now but will be when more entities are added (pull-request, config ...)
 	time     lamport.Time
 	unixTime int64
 
@@ -43,7 +46,7 @@ type Version struct {
 	metadata map[string]string
 
 	// Not serialized
-	commitHash git.Hash
+	commitHash repository.Hash
 }
 
 type VersionJSON struct {
@@ -176,7 +179,7 @@ func (v *Version) Validate() error {
 
 // Write will serialize and store the Version as a git blob and return
 // its hash
-func (v *Version) Write(repo repository.Repo) (git.Hash, error) {
+func (v *Version) Write(repo repository.Repo) (repository.Hash, error) {
 	// make sure we don't write invalid data
 	err := v.Validate()
 	if err != nil {
@@ -226,4 +229,16 @@ func (v *Version) GetMetadata(key string) (string, bool) {
 // AllMetadata return all metadata for this Version
 func (v *Version) AllMetadata() map[string]string {
 	return v.metadata
+}
+
+func (v *Version) Keys() []*Key {
+	return v.keys
+}
+
+func (v *Version) CommitHash() repository.Hash {
+	return v.commitHash
+}
+
+func (v *Version) Time() lamport.Time {
+	return v.time
 }

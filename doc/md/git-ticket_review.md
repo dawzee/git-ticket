@@ -1,14 +1,10 @@
 ## git-ticket review
 
-Review a ticket.
+Review actions of a ticket.
 
 ### Synopsis
 
-Review a ticket.
-
-```
-git-ticket review [<id>] [flags]
-```
+Review actions of a ticket.
 
 ### Options
 
@@ -19,5 +15,6 @@ git-ticket review [<id>] [flags]
 ### SEE ALSO
 
 * [git-ticket](git-ticket.md)	 - A ticket tracker embedded in Git.
-* [git-ticket review fetch](git-ticket_review_fetch.md)	 - Fetch review data for a ticket.
+* [git-ticket review checklist](git-ticket_review_checklist.md)	 - Complete a checklist associated with a ticket.
+* [git-ticket review fetch](git-ticket_review_fetch.md)	 - Get Differential Revision data from Phabricator and store in a ticket.
 

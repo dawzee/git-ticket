@@ -7,7 +7,7 @@ import (
 
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/identity"
-	"github.com/daedaleanai/git-ticket/util/git"
+	"github.com/daedaleanai/git-ticket/repository"
 	"github.com/daedaleanai/git-ticket/util/text"
 	"github.com/daedaleanai/git-ticket/util/timestamp"
 )
@@ -17,9 +17,9 @@ var _ Operation = &CreateOperation{}
 // CreateOperation define the initial creation of a bug
 type CreateOperation struct {
 	OpBase
-	Title   string     `json:"title"`
-	Message string     `json:"message"`
-	Files   []git.Hash `json:"files"`
+	Title   string            `json:"title"`
+	Message string            `json:"message"`
+	Files   []repository.Hash `json:"files"`
 }
 
 // Sign-post method for gqlgen
@@ -48,7 +48,7 @@ func (op *CreateOperation) Apply(snapshot *Snapshot) {
 
 	snapshot.Comments = []Comment{comment}
 	snapshot.Author = op.Author
-	snapshot.CreatedAt = op.Time()
+	snapshot.CreateTime = op.Time()
 
 	snapshot.Timeline = []TimelineItem{
 		&CreateTimelineItem{
@@ -57,7 +57,7 @@ func (op *CreateOperation) Apply(snapshot *Snapshot) {
 	}
 }
 
-func (op *CreateOperation) GetFiles() []git.Hash {
+func (op *CreateOperation) GetFiles() []repository.Hash {
 	return op.Files
 }
 
@@ -98,9 +98,9 @@ func (op *CreateOperation) UnmarshalJSON(data []byte) error {
 	}
 
 	aux := struct {
-		Title   string     `json:"title"`
-		Message string     `json:"message"`
-		Files   []git.Hash `json:"files"`
+		Title   string            `json:"title"`
+		Message string            `json:"message"`
+		Files   []repository.Hash `json:"files"`
 	}{}
 
 	err = json.Unmarshal(data, &aux)
@@ -119,7 +119,7 @@ func (op *CreateOperation) UnmarshalJSON(data []byte) error {
 // Sign post method for gqlgen
 func (op *CreateOperation) IsAuthored() {}
 
-func NewCreateOp(author identity.Interface, unixTime int64, title, message string, files []git.Hash) *CreateOperation {
+func NewCreateOp(author identity.Interface, unixTime int64, title, message string, files []repository.Hash) *CreateOperation {
 	return &CreateOperation{
 		OpBase:  newOpBase(CreateOp, author, unixTime),
 		Title:   title,
@@ -141,7 +141,7 @@ func Create(author identity.Interface, unixTime int64, title, message string) (*
 	return CreateWithFiles(author, unixTime, title, message, nil)
 }
 
-func CreateWithFiles(author identity.Interface, unixTime int64, title, message string, files []git.Hash) (*Bug, *CreateOperation, error) {
+func CreateWithFiles(author identity.Interface, unixTime int64, title, message string, files []repository.Hash) (*Bug, *CreateOperation, error) {
 	newBug := NewBug()
 	createOp := NewCreateOp(author, unixTime, title, message, files)
 

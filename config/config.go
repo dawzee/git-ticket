@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/daedaleanai/git-ticket/repository"
-	"github.com/daedaleanai/git-ticket/util/git"
 )
 
 const configRefPrefix = "refs/configs/"
@@ -55,7 +54,7 @@ func SetConfig(repo repository.ClockedRepo, name string, config []byte) error {
 		return fmt.Errorf("cache: failed to determine if ref %s exists: %s", refName, err)
 	}
 
-	var commitHash git.Hash
+	var commitHash repository.Hash
 	if exists {
 		oldCommitHash, err := repo.ResolveRef(refName)
 		if err != nil {
@@ -106,7 +105,7 @@ func GetConfig(repo repository.ClockedRepo, name string) ([]byte, error) {
 		return nil, fmt.Errorf("cache: failed to get the tree for commit %s (ref: %s): %s", commitHash, refName, err)
 	}
 
-	tree, err := repo.ListEntries(treeHash)
+	tree, err := repo.ReadTree(treeHash)
 	if err != nil {
 		return nil, fmt.Errorf("cache: failed to list entries in tree %s (ref: %s): %s", treeHash, refName, err)
 	}

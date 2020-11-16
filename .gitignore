@@ -1,5 +1,7 @@
 git-ticket
 !/misc/bash_completion/git-ticket
+!/misc/fish_completion/git-ticket
+!/misc/powershell_completion/git-ticket
 !/misc/zsh_completion/git-ticket
 .gitkeep
 dist
