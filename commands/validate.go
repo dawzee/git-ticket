@@ -42,7 +42,11 @@ func runValidate(env *Env, args []string) error {
 
 		_, err = validator.ValidateCommit(hash)
 		if err != nil {
-			refErr = errors.Wrapf(refErr, "ref %s check fail", ref)
+			if refErr == nil {
+				refErr = errors.Errorf("ref %s check fail", ref)
+			} else {
+				refErr = errors.Wrapf(refErr, "ref %s check fail", ref)
+			}
 			fmt.Printf("ref %s\tFAIL: %s\n", ref, err.Error())
 		} else {
 			fmt.Printf("ref %s\tOK\n", ref)
