@@ -1,6 +1,7 @@
 package bug
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -9,44 +10,72 @@ import (
 
 	"github.com/thought-machine/gonduit/requests"
 
+	"github.com/daedaleanai/git-ticket/identity"
 	"github.com/daedaleanai/git-ticket/repository"
 )
 
-// PhapTransaction holds common transaction data
+type TransactionType int
+
+const (
+	_ TransactionType = iota
+	CommentTransaction
+	StatusTransaction
+	UserStatusTransaction
+	DiffTransaction
+)
+
+// PhapTransaction holds data received from Phabricator
 type PhabTransaction struct {
-	Id        string
-	User      string
+	TransId   string
+	PhabUser  string
 	Timestamp int64
+
+	Type TransactionType
+	// comment specific fields
+	Diff int    `json:",omitempty"` // diff id comment was made againt, inline comments only
+	Path string `json:",omitempty"` // file path, inline comments only
+	Line int    `json:",omitempty"` // line number, inline comments only
+	Text string `json:",omitempty"`
+	// status and userstatus specific fields
+	Status string `json:",omitempty"`
+	// diff specific fields
+	DiffId int `json:",omitempty"`
 }
 
-// ReviewComment extends PhabTransaction with comment specific fields
-type ReviewComment struct {
+// ReviewUpdate extends the Phabricator data with git ticket information
+type ReviewUpdate struct {
 	PhabTransaction
-	Diff int    // diff id comment was made againt, inline comments only
-	Path string // file path, inline comments only
-	Line int    // line number, inline comments only
-	Text string
-}
-
-// ReviewStatus extends PhabTransaction with status specific fields
-type ReviewStatus struct {
-	PhabTransaction
-	Status string
+	Author identity.Interface `json:",omitempty"`
 }
 
 // ReviewInfo holds a set of comment and status updates related to a diff
 type ReviewInfo struct {
 	RevisionId      string // e.g. D1234
+	Title           string
 	LastTransaction string
-	Statuses        []ReviewStatus
-	Comments        []ReviewComment
+	Updates         []ReviewUpdate
 }
+
+// statusActionToState maps states returned by Phabricator on to more readable strings
+var statusActionToState = map[string]string{
+	"accept":          "accepted",
+	"close":           "closed",
+	"create":          "created",
+	"request-changes": "changes requested",
+	"request-review":  "review requested",
+}
+
+const RemoveReviewInfo = "-1"
 
 // OneLineComment returns a string containing the comment text, and it's an inline
 // comment the file & line details, on a single line. Comments over 50 characters
 // are truncated.
-func (c ReviewComment) OneLineComment() string {
+func (c PhabTransaction) OneLineComment() string {
 	var output string
+
+	if c.Type != CommentTransaction {
+		return ""
+	}
 
 	// Put the comment on one line and output the first 50 characters
 	oneLineText := strings.ReplaceAll(c.Text, "\n", " ")
@@ -64,15 +93,57 @@ func (c ReviewComment) OneLineComment() string {
 	return output
 }
 
+// UnmarshalJSON fulfils the Marshaler interface so that we can handle the author identity
+func (u *ReviewUpdate) UnmarshalJSON(data []byte) error {
+	type rawUpdate struct {
+		PhabTransaction
+		Author json.RawMessage
+	}
+
+	var raw rawUpdate
+	err := json.Unmarshal(data, &raw)
+	if err != nil {
+		return err
+	}
+
+	u.PhabTransaction = raw.PhabTransaction
+
+	if raw.Author != nil {
+		author, err := identity.UnmarshalJSON(raw.Author)
+		if err != nil {
+			return err
+		}
+		u.Author = author
+	}
+
+	return nil
+}
+
+// LatestOverallStatus returns the latest overall status set for this review.
+func (r ReviewInfo) LatestOverallStatus() string {
+	var ls ReviewUpdate
+
+	for _, s := range r.Updates {
+		if s.Type == StatusTransaction && s.Timestamp > ls.Timestamp {
+			ls = s
+		}
+	}
+
+	return ls.Status
+}
+
 // LatestUserStatuses returns a map of users and the latest status they set for
 // this review.
-func (r ReviewInfo) LatestUserStatuses() map[string]ReviewStatus {
+func (r ReviewInfo) LatestUserStatuses() map[string]ReviewUpdate {
 	// Create a map of the latest status change made by all users
-	userStatusChange := make(map[string]ReviewStatus)
+	userStatusChange := make(map[string]ReviewUpdate)
 
-	for _, s := range r.Statuses {
-		if sc, present := userStatusChange[s.User]; !present || s.Timestamp > sc.Timestamp {
-			userStatusChange[s.User] = s
+	for _, s := range r.Updates {
+		if s.Type != UserStatusTransaction {
+			continue
+		}
+		if sc, present := userStatusChange[s.PhabUser]; !present || s.Timestamp > sc.Timestamp {
+			userStatusChange[s.PhabUser] = s
 		}
 	}
 
@@ -105,11 +176,6 @@ func FetchReviewInfo(id string, since string) (*ReviewInfo, error) {
 		deltaUpdate = true
 	}
 
-	// TODO remove this debug code when review is fully implemented
-	//dumpFile, _ := os.Create("dump.json")
-	//defer dumpFile.Close()
-	//count := 1
-
 	for {
 
 		request := requests.TransactionSearchRequest{ObjectID: id,
@@ -117,21 +183,10 @@ func FetchReviewInfo(id string, since string) (*ReviewInfo, error) {
 			After:  after,
 			Limit:  100}
 
-		// TODO
-		//requestJ, _ := json.Marshal(request)
-		//dumpFile.WriteString(fmt.Sprintf("\n{\"_comment\":\"=========REQUEST %d==========\"}", count))
-		//dumpFile.Write(requestJ)
-
 		response, err := phabClient.TransactionSearch(request)
 		if err != nil {
 			return nil, err
 		}
-
-		// TODO
-		//responseJ, _ := json.Marshal(response)
-		//dumpFile.WriteString(fmt.Sprintf("\n{\"_comment\":\"=========RESPONSE %d==========\"}", count))
-		//dumpFile.Write(responseJ)
-		//count++
 
 		if len(response.Data) == 0 {
 			break
@@ -146,11 +201,15 @@ func FetchReviewInfo(id string, since string) (*ReviewInfo, error) {
 		// Loop through all transactions
 		for _, t := range response.Data {
 
-			transData := PhabTransaction{Id: strconv.Itoa(t.ID),
-				User:      t.AuthorPHID,
-				Timestamp: time.Time(t.DateCreated).Unix()}
+			transData := ReviewUpdate{
+				PhabTransaction: PhabTransaction{
+					TransId:   strconv.Itoa(t.ID),
+					PhabUser:  t.AuthorPHID,
+					Timestamp: time.Time(t.DateCreated).Unix()}}
 
 			switch t.Type {
+			// The types: inline & comment hold comments made to a Differential
+
 			case "inline":
 				// If it's an inline comment the Fields contains the file path, line and diff ID
 				diff := t.Fields["diff"].(map[string]interface{})
@@ -158,36 +217,59 @@ func FetchReviewInfo(id string, since string) (*ReviewInfo, error) {
 				commentPath := t.Fields["path"].(string)
 				commentLine := int(t.Fields["line"].(float64))
 
-				for _, c := range t.Comments {
-					newComment := ReviewComment{PhabTransaction: transData,
-						Diff: commentDiff,
-						Path: commentPath,
-						Line: commentLine,
-						Text: c.Content["raw"].(string)}
+				transData.Type = CommentTransaction
 
-					result.Comments = append(result.Comments, newComment)
+				for _, c := range t.Comments {
+					transData.Diff = commentDiff
+					transData.Path = commentPath
+					transData.Line = commentLine
+					transData.Text = c.Content["raw"].(string)
+
+					result.Updates = append(result.Updates, transData)
 				}
 
 			case "comment":
-				for _, c := range t.Comments {
-					newComment := ReviewComment{PhabTransaction: transData,
-						Text: c.Content["raw"].(string)}
+				transData.Type = CommentTransaction
 
-					result.Comments = append(result.Comments, newComment)
+				for _, c := range t.Comments {
+					transData.Text = c.Content["raw"].(string)
+
+					result.Updates = append(result.Updates, transData)
 				}
 
 			case "status":
-				newStatus := ReviewStatus{PhabTransaction: transData,
-					Status: t.Fields["new"].(string)}
+				transData.Type = StatusTransaction
+				transData.Status = t.Fields["new"].(string)
 
-				result.Statuses = append(result.Statuses, newStatus)
+				result.Updates = append(result.Updates, transData)
 
-			case "accept":
-				newStatus := ReviewStatus{PhabTransaction: transData,
-					Status: "accepted"}
+			case "accept", "close", "create", "request-changes", "request-review":
+				transData.Type = UserStatusTransaction
+				transData.Status = statusActionToState[t.Type]
 
-				result.Statuses = append(result.Statuses, newStatus)
+				result.Updates = append(result.Updates, transData)
 
+			case "title":
+				result.Title = t.Fields["new"].(string)
+
+			case "update":
+				// if it's an update then query Phabricator for the Diff id rather than storing the PHID for it
+				phidDiff := t.Fields["new"].(string)
+				searchConstraint := map[string]interface{}{"phids": [...]string{phidDiff}}
+				request := requests.SearchRequest{Constraints: searchConstraint, Limit: 1}
+
+				response, err := phabClient.DifferentialDiffSearch(request)
+				if err != nil {
+					return nil, err
+				}
+				if len(response.Data) < 1 {
+					return nil, fmt.Errorf("differential %s includes diff %s which gave zero results", id, phidDiff)
+				}
+
+				transData.Type = DiffTransaction
+				transData.DiffId = response.Data[0].ID
+
+				result.Updates = append(result.Updates, transData)
 			}
 		}
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/identity"
@@ -131,6 +132,12 @@ func NewCreateOp(author identity.Interface, unixTime int64, title, message strin
 // CreateTimelineItem replace a Create operation in the Timeline and hold its edition history
 type CreateTimelineItem struct {
 	CommentTimelineItem
+}
+
+func (c CreateTimelineItem) String() string {
+	return fmt.Sprintf("(%s) %-20s: created ticket",
+		c.CreatedAt.Time().Format(time.RFC822),
+		c.Author.DisplayName())
 }
 
 // Sign post method for gqlgen

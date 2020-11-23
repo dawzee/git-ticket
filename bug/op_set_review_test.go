@@ -9,46 +9,48 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var testStatuses = []ReviewStatus{
-	ReviewStatus{
+var testUpdates = []ReviewUpdate{
+	ReviewUpdate{
 		PhabTransaction: PhabTransaction{
-			Id:        "10000",
-			User:      "USERID1",
-			Timestamp: 0},
-		Status: "in progress"},
-	ReviewStatus{
+			TransId:   "10000",
+			PhabUser:  "USERID1",
+			Timestamp: 0,
+			Type:      StatusTransaction,
+			Status:    "in progress"}},
+	ReviewUpdate{
 		PhabTransaction: PhabTransaction{
-			Id:        "10005",
-			User:      "USERID1",
-			Timestamp: 5},
-		Status: "on review"},
-	ReviewStatus{
+			TransId:   "10005",
+			PhabUser:  "USERID1",
+			Timestamp: 5,
+			Type:      StatusTransaction,
+			Status:    "on review"}},
+	ReviewUpdate{
 		PhabTransaction: PhabTransaction{
-			Id:        "10010",
-			User:      "USERID1",
-			Timestamp: 10},
-		Status: "complete"},
-}
-
-var testComments = []ReviewComment{
-	ReviewComment{
+			TransId:   "10010",
+			PhabUser:  "USERID1",
+			Timestamp: 10,
+			Type:      StatusTransaction,
+			Status:    "complete"}},
+	ReviewUpdate{
 		PhabTransaction: PhabTransaction{
-			Id:        "10001",
-			User:      "USERID2",
-			Timestamp: 1},
-		Diff: 123,
-		Path: "code/under_test.go",
-		Line: 1,
-		Text: "needs work"},
-	ReviewComment{
+			TransId:   "10001",
+			PhabUser:  "USERID2",
+			Timestamp: 1,
+			Type:      CommentTransaction,
+			Diff:      123,
+			Path:      "code/under_test.go",
+			Line:      1,
+			Text:      "needs work"}},
+	ReviewUpdate{
 		PhabTransaction: PhabTransaction{
-			Id:        "10002",
-			User:      "USERID2",
-			Timestamp: 2},
-		Diff: 124,
-		Path: "code/under_test.go",
-		Line: 1,
-		Text: "LGTM"},
+			TransId:   "10002",
+			PhabUser:  "USERID2",
+			Timestamp: 2,
+			Type:      CommentTransaction,
+			Diff:      124,
+			Path:      "code/under_test.go",
+			Line:      1,
+			Text:      "LGTM"}},
 }
 
 func TestOpSetReview_SetReview(t *testing.T) {
@@ -59,8 +61,7 @@ func TestOpSetReview_SetReview(t *testing.T) {
 	before, err := SetReview(bug1, rene, unix,
 		&ReviewInfo{RevisionId: "D1234",
 			LastTransaction: "12345",
-			Statuses:        testStatuses,
-			Comments:        testComments,
+			Updates:         testUpdates,
 		})
 	assert.NoError(t, err)
 
@@ -87,38 +88,43 @@ func TestOpSetReview_Apply(t *testing.T) {
 	// create an operation and apply to the snapshot
 	setReviewOp := NewSetReviewOp(rene, unix, &ReviewInfo{RevisionId: "D1234",
 		LastTransaction: "12345",
-		Statuses:        []ReviewStatus{testStatuses[0]},
-		Comments:        []ReviewComment{testComments[0]}})
+		Updates:         []ReviewUpdate{testUpdates[0]}})
 	setReviewOp.Apply(&snapshot)
 
 	// sumation holds a local copy of what should be in the snapshot
 	sumation := ReviewInfo{RevisionId: "D1234",
 		LastTransaction: "12345",
-		Statuses:        []ReviewStatus{testStatuses[0]},
-		Comments:        []ReviewComment{testComments[0]},
+		Updates:         []ReviewUpdate{testUpdates[0]},
 	}
 
 	assert.Equal(t, sumation, snapshot.Reviews["D1234"])
 
-	// add an extra comment
+	// add an extra Update
 	setReviewOp2 := NewSetReviewOp(rene, unix, &ReviewInfo{RevisionId: "D1234",
 		LastTransaction: "12346",
-		Comments:        []ReviewComment{testComments[1]}})
+		Updates:         []ReviewUpdate{testUpdates[1]}})
 	setReviewOp2.Apply(&snapshot)
 
-	sumation.Comments = append(sumation.Comments, testComments[1])
+	sumation.Updates = append(sumation.Updates, testUpdates[1])
 	sumation.LastTransaction = "12346"
 
 	assert.Equal(t, sumation, snapshot.Reviews["D1234"])
 
-	// and a couple more status changes
+	// and a couple more
 	setReviewOp3 := NewSetReviewOp(rene, unix, &ReviewInfo{RevisionId: "D1234",
 		LastTransaction: "12347",
-		Statuses:        testStatuses[1:2]})
+		Updates:         testUpdates[1:2]})
 	setReviewOp3.Apply(&snapshot)
 
-	sumation.Statuses = append(sumation.Statuses, testStatuses[1:2]...)
+	sumation.Updates = append(sumation.Updates, testUpdates[1:2]...)
 	sumation.LastTransaction = "12347"
 
 	assert.Equal(t, sumation, snapshot.Reviews["D1234"])
+
+	// remove the review
+	setReviewOp4 := NewSetReviewOp(rene, unix, &ReviewInfo{RevisionId: "D1234",
+		LastTransaction: "-1"})
+	setReviewOp4.Apply(&snapshot)
+
+	assert.NotContains(t, snapshot.Reviews, "D1234")
 }

@@ -2,6 +2,8 @@ package bug
 
 import (
 	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/daedaleanai/git-ticket/entity"
 	"github.com/daedaleanai/git-ticket/identity"
@@ -107,6 +109,17 @@ type SetChecklistTimelineItem struct {
 
 func (s SetChecklistTimelineItem) Id() entity.Id {
 	return s.id
+}
+
+func (s SetChecklistTimelineItem) When() timestamp.Timestamp {
+	return s.UnixTime
+}
+
+func (s SetChecklistTimelineItem) String() string {
+	return fmt.Sprintf("(%s) %-20s: edited \"%s\"",
+		s.UnixTime.Time().Format(time.RFC822),
+		s.Author.DisplayName(),
+		s.Checklist.Title)
 }
 
 // Sign post method for gqlgen

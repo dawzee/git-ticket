@@ -2,6 +2,8 @@ package bug
 
 import (
 	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -99,6 +101,17 @@ type SetStatusTimelineItem struct {
 
 func (s SetStatusTimelineItem) Id() entity.Id {
 	return s.id
+}
+
+func (s SetStatusTimelineItem) When() timestamp.Timestamp {
+	return s.UnixTime
+}
+
+func (s SetStatusTimelineItem) String() string {
+	return fmt.Sprintf("(%s) %-20s: %s",
+		s.UnixTime.Time().Format(time.RFC822),
+		s.Author.DisplayName(),
+		s.Status.Action())
 }
 
 // Sign post method for gqlgen

@@ -256,10 +256,30 @@ func (c *BugCache) SetChecklistRaw(author *IdentityCache, unixTime int64, cl bug
 	return op, c.notifyUpdated()
 }
 
+func (c *BugCache) RmReview(id string) (*bug.SetReviewOperation, error) {
+	author, err := c.repoCache.GetUserIdentity()
+	if err != nil {
+		return nil, err
+	}
+
+	review := &bug.ReviewInfo{RevisionId: id, LastTransaction: bug.RemoveReviewInfo}
+
+	return c.SetReviewRaw(author, time.Now().Unix(), nil, review)
+}
+
 func (c *BugCache) SetReview(review *bug.ReviewInfo) (*bug.SetReviewOperation, error) {
 	author, err := c.repoCache.GetUserIdentity()
 	if err != nil {
 		return nil, err
+	}
+
+	// Before committing resolve all the Phabricator IDs to identities
+	for i, t := range review.Updates {
+		user, err := c.repoCache.ResolveIdentityPhabID(t.PhabUser)
+		if err != nil {
+			return nil, err
+		}
+		review.Updates[i].Author = user.Identity
 	}
 
 	return c.SetReviewRaw(author, time.Now().Unix(), nil, review)
