@@ -93,7 +93,7 @@ func NewNamedRepoCache(r repository.ClockedRepo, name string) (*RepoCache, error
 		bugs:          make(map[entity.Id]*BugCache),
 		loadedBugs:    NewLRUIdCache(),
 		identities:    make(map[entity.Id]*IdentityCache),
-		commits:    make(map[repository.Hash]*object.Commit),
+		commits:       make(map[repository.Hash]*object.Commit),
 	}
 
 	err := c.lock()
@@ -273,7 +273,6 @@ func repoIsAvailable(repo repository.Repo) error {
 
 		// The lock file is just laying there after a crash, clean it
 
-		fmt.Println("A lock file is present but the corresponding process is not, removing it.")
 		err = f.Close()
 		if err != nil {
 			return err
