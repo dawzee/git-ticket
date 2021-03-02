@@ -24,21 +24,21 @@ import (
 )
 
 type Validator struct {
+	repo    repository.ClockedRepo
 	backend *cache.RepoCache
 
 	// FirstKey is the key used to sign the first commit.
 	FirstKey *identity.Key
 
 	// versions holds all the Identity Versions ordered by lamport time.
-	versions       []*versionInfo
+	versions []*versionInfo
 	// keyring holds all the current and past keys along with their expire time.
-	keyring        openpgp.EntityList
+	keyring openpgp.EntityList
 	// keyCommit maps the key id to the commit which introduced that key.
-	keyCommit      map[uint64]*object.Commit
+	keyCommit map[uint64]*object.Commit
 	// checkedCommits holds the valid already-checked commits.
 	checkedCommits map[repository.Hash]bool
 }
-
 
 // versionInfo contains details about a Version of an Identity, including
 // the added and removed keys, if any.
@@ -56,17 +56,17 @@ func (a ByLamportTime) Len() int           { return len(a) }
 func (a ByLamportTime) Less(i, j int) bool { return a[i].Version.Time() < a[j].Version.Time() }
 func (a ByLamportTime) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
-
 // NewValidator creates a validator for the current identities snapshot.
 // If identities are changed a new Validator instance should be used.
 //
 // The returned instance can be used to verify multiple git refs
 // from the main repository against the keychain built from the
 // identities snapshot loaded initially.
-func NewValidator(backend *cache.RepoCache) (*Validator, error) {
+func NewValidator(repo repository.ClockedRepo, backend *cache.RepoCache) (*Validator, error) {
 	var err error
 
 	v := &Validator{
+		repo:           repo,
 		backend:        backend,
 		keyring:        make(openpgp.EntityList, 0),
 		keyCommit:      make(map[uint64]*object.Commit),
@@ -214,7 +214,6 @@ func (v *Validator) updateKeyring(info *versionInfo) {
 			PrimaryKey: key.PublicKey(),
 			Identities: make(map[string]*openpgp.Identity),
 		}
-
 		creationTime := info.Commit.Committer.When
 		uid := packet.NewUserId(info.Identity.Name(), "", info.Identity.Email())
 		isPrimaryId := true
@@ -237,6 +236,50 @@ func (v *Validator) updateKeyring(info *versionInfo) {
 
 		v.keyring = append(v.keyring, e)
 	}
+}
+
+// checkCommitForKey looks to see if the commit contains a git ticket identity update including key, if it does
+// then add the key to the keyring
+func (v *Validator) CheckCommitForKey(hash repository.Hash) error {
+	identity, err := identity.ReadCommit(v.repo, hash)
+	if err != nil {
+		return err
+	}
+	keys := identity.Keys()
+	if len(keys) == 0 {
+		return errors.New("commit contains an identity but no key")
+	}
+
+	e := &openpgp.Entity{
+		PrimaryKey: keys[0].PublicKey(),
+		Identities: make(map[string]*openpgp.Identity),
+	}
+	uid := packet.NewUserId(identity.Name(), "", identity.Email())
+	isPrimaryId := true
+	e.Identities[uid.Id] = &openpgp.Identity{
+		Name:   uid.Id,
+		UserId: uid,
+		SelfSignature: &packet.Signature{
+			CreationTime:    identity.LastModification().Time(),
+			SigType:         packet.SigTypePositiveCert,
+			PubKeyAlgo:      packet.PubKeyAlgoRSA,
+			Hash:            crypto.SHA256,
+			KeyLifetimeSecs: nil,
+			IsPrimaryId:     &isPrimaryId,
+			FlagsValid:      true,
+			FlagSign:        true,
+			FlagCertify:     true,
+			IssuerKeyId:     &e.PrimaryKey.KeyId,
+		},
+	}
+
+	v.keyring = append(v.keyring, e)
+
+	if v.FirstKey == nil {
+		v.FirstKey = keys[0]
+	}
+
+	return nil
 }
 
 // ValidateCommit checks the commit signature along with the key's expire time,

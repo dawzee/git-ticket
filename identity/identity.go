@@ -132,8 +132,13 @@ func ReadLocal(repo repository.ClockedRepo, id entity.Id) (*Identity, error) {
 
 // ReadRemote load a remote Identity from the identities data available in git
 func ReadRemote(repo repository.ClockedRepo, remote string, id string) (*Identity, error) {
-       ref := fmt.Sprintf(identityRemoteRefPattern, remote) + id
-       return read(repo, ref)
+	ref := fmt.Sprintf(identityRemoteRefPattern, remote) + id
+	return read(repo, ref)
+}
+
+// ReadCommit loads identity data from a single commit in git
+func ReadCommit(repo repository.Repo, hash repository.Hash) (*Identity, error) {
+	return read(repo, hash.String())
 }
 
 // read will load and parse an identity from git
@@ -320,7 +325,7 @@ func RemoveKeyMutator(fingerprint string, removedKey **Key) func(mutator Mutator
 				if removedKey != nil {
 					*removedKey = key
 				}
-				keys := make([]*Key, len(mutator.Keys) - 1)
+				keys := make([]*Key, len(mutator.Keys)-1)
 				copy(keys, mutator.Keys[0:j])
 				copy(keys[j:], mutator.Keys[j+1:])
 				mutator.Keys = keys

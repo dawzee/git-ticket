@@ -21,8 +21,8 @@ func checkAddIdentity(t *testing.T, backend *cache.RepoCache, name, email, armor
 	return id
 }
 
-func checkValidator(t *testing.T, backend *cache.RepoCache, errorMsg, firstKey string) {
-	validator, err := NewValidator(backend)
+func checkValidator(t *testing.T, repo repository.TestedRepo, backend *cache.RepoCache, errorMsg, firstKey string) {
+	validator, err := NewValidator(repo, backend)
 	if errorMsg == "" {
 		require.NoError(t, err)
 		if firstKey == "" {
@@ -67,8 +67,8 @@ func TestNewValidator_EmptyRepo(t *testing.T) {
 	backend, err := cache.NewRepoCache(repo)
 	require.NoError(t, err)
 
-	checkValidator(t, backend, "", "")
-	validator, err := NewValidator(backend)
+	checkValidator(t, repo, backend, "", "")
+	validator, err := NewValidator(repo, backend)
 	require.NoError(t, err)
 	require.Nil(t, validator.FirstKey)
 }
@@ -83,7 +83,7 @@ func TestNewValidator_OneIdentity(t *testing.T) {
 	armoredPubkey := repository.SetupSigningKey(t, repo, "a@e.org")
 
 	_ = checkAddIdentity(t, backend, "A", "a@e.org", armoredPubkey)
-	checkValidator(t, backend, "", armoredPubkey)
+	checkValidator(t, repo, backend, "", armoredPubkey)
 }
 
 func TestNewValidator_TwoSeparateIdentities(t *testing.T) {
@@ -101,7 +101,7 @@ func TestNewValidator_TwoSeparateIdentities(t *testing.T) {
 
 	msg := fmt.Sprintf("failed to validate identities: invalid identity %s (%s) commit %s: invalid signature: no key can verify the signature",
 		id2.Id(), id2.Email(), id2.Versions()[0].CommitHash())
-	checkValidator(t, backend, msg, "")
+	checkValidator(t, repo, backend, msg, "")
 }
 
 func TestNewValidator_IdentityWithSameKeyTwice(t *testing.T) {
@@ -118,7 +118,7 @@ func TestNewValidator_IdentityWithSameKeyTwice(t *testing.T) {
 
 	msg := fmt.Sprintf("failed to read identity versions: keys with identical keyId introduced in commits %s and %s",
 		id1.Versions()[0].CommitHash(), id1.Versions()[1].CommitHash())
-	checkValidator(t, backend, msg, "")
+	checkValidator(t, repo, backend, msg, "")
 }
 
 func TestNewValidator_TwoIdentitiesWithSameKey(t *testing.T) {
@@ -133,7 +133,7 @@ func TestNewValidator_TwoIdentitiesWithSameKey(t *testing.T) {
 
 	id2 := checkAddIdentity(t, backend, "B", "b@e.org", armoredPubkey)
 
-	_, err = NewValidator(backend)
+	_, err = NewValidator(repo, backend)
 	err1 := fmt.Sprintf("failed to read identity versions: keys with identical keyId introduced in commits %s and %s",
 		id1.Versions()[0].CommitHash(), id2.Versions()[0].CommitHash())
 	err2 := fmt.Sprintf("failed to read identity versions: keys with identical keyId introduced in commits %s and %s",
@@ -152,7 +152,7 @@ func TestNewValidator_TwoIdentitiesTwoVersions(t *testing.T) {
 
 	armoredPubkey := repository.SetupSigningKey(t, repo, "a@e.org")
 	id1 := checkAddIdentity(t, backend, "A", "a@e.org", armoredPubkey)
-	checkValidator(t, backend, "", armoredPubkey)
+	checkValidator(t, repo, backend, "", armoredPubkey)
 
 	armoredPubkey2 := repository.CreatePubkey(t)
 	id2 := checkAddIdentity(t, backend, "B", "b@e.org", armoredPubkey2)
@@ -163,7 +163,7 @@ func TestNewValidator_TwoIdentitiesTwoVersions(t *testing.T) {
 	armoredPubkey4 := repository.CreatePubkey(t)
 	checkAddKey(t, id2, armoredPubkey4)
 
-	checkValidator(t, backend, "", armoredPubkey)
+	checkValidator(t, repo, backend, "", armoredPubkey)
 }
 
 func TestNewValidator_WrongEmail(t *testing.T) {
@@ -179,7 +179,7 @@ func TestNewValidator_WrongEmail(t *testing.T) {
 
 	msg := fmt.Sprintf("failed to validate identities: invalid identity %s (%s) commit %s: invalid signature: git commit committer-email does not match the identity-email: x@a.org vs a@e.org",
 		id1.Id(), id1.Email(), id1.Versions()[0].CommitHash())
-	checkValidator(t, backend, msg, armoredPubkey)
+	checkValidator(t, repo, backend, msg, armoredPubkey)
 }
 
 func TestNewValidator_RemovedKey(t *testing.T) {
@@ -194,12 +194,12 @@ func TestNewValidator_RemovedKey(t *testing.T) {
 
 	keyId2, armoredPubkey2, gpgWrapper2 := repository.CreateKey(t, "a@e.org")
 	checkAddKey(t, id1, armoredPubkey2)
-	checkValidator(t, backend, "", armoredPubkey)
+	checkValidator(t, repo, backend, "", armoredPubkey)
 
 	repository.SetupKey(t, repo, "a@e.org", keyId2, gpgWrapper2)
 	checkRemoveKey(t, id1, armoredPubkey)
-	checkValidator(t, backend, "", armoredPubkey)
+	checkValidator(t, repo, backend, "", armoredPubkey)
 
 	checkRemoveKey(t, id1, armoredPubkey2)
-	checkValidator(t, backend, "", armoredPubkey)
+	checkValidator(t, repo, backend, "", armoredPubkey)
 }
