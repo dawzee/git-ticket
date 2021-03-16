@@ -42,15 +42,6 @@ func runValidate(env *Env, args []string) error {
 			return err
 		}
 
-		if validator.FirstKey == nil {
-			// if our validator contains no key, check if this commit contains an identity with a key
-			// so we can validate our self
-			err = validator.CheckCommitForKey(hash)
-			if err != nil {
-				return err
-			}
-		}
-
 		_, err = validator.ValidateCommit(hash)
 		if err != nil {
 			if refErr == nil {

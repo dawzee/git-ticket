@@ -240,7 +240,7 @@ func (v *Validator) updateKeyring(info *versionInfo) {
 
 // checkCommitForKey looks to see if the commit contains a git ticket identity update including key, if it does
 // then add the key to the keyring
-func (v *Validator) CheckCommitForKey(hash repository.Hash) error {
+func (v *Validator) checkCommitForKey(hash repository.Hash) error {
 	identity, err := identity.ReadCommit(v.repo, hash)
 	if err != nil {
 		return err
@@ -297,6 +297,15 @@ func (v *Validator) ValidateCommit(hash repository.Hash) (*packet.PublicKey, err
 
 	for _, h := range commit.ParentHashes {
 		_, err = v.ValidateCommit(repository.Hash(h.String()))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if v.FirstKey == nil {
+		// if our validator contains no key, check if this commit contains an identity with a key
+		// so we can validate our self
+		err = v.checkCommitForKey(hash)
 		if err != nil {
 			return nil, err
 		}

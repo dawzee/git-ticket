@@ -136,7 +136,7 @@ func ReadRemote(repo repository.ClockedRepo, remote string, id string) (*Identit
 	return read(repo, ref)
 }
 
-// ReadCommit loads identity data from a single commit in git
+// ReadCommit loads an identity data from a single commit in git
 func ReadCommit(repo repository.Repo, hash repository.Hash) (*Identity, error) {
 	return read(repo, hash.String())
 }
