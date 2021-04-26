@@ -20,7 +20,6 @@ import (
 	"github.com/daedaleanai/git-ticket/cache"
 	"github.com/daedaleanai/git-ticket/identity"
 	"github.com/daedaleanai/git-ticket/repository"
-	"github.com/daedaleanai/git-ticket/util/lamport"
 )
 
 type Validator struct {
@@ -79,14 +78,6 @@ func NewValidator(repo repository.ClockedRepo, backend *cache.RepoCache) (*Valid
 	}
 
 	sort.Sort(ByLamportTime(v.versions))
-
-	clock := lamport.NewMemClock()
-	for i, version := range v.versions {
-		if clock.Time() != version.Version.Time() {
-			return nil, fmt.Errorf("unexpected lamport time for version at position %d: %d in commit %s", i, clock.Time(), version.Version.CommitHash())
-		}
-		clock.Increment()
-	}
 
 	v.FirstKey, err = v.validateIdentities()
 	if err != nil {
@@ -175,7 +166,7 @@ func (v *Validator) validateIdentities() (*identity.Key, error) {
 			v.updateKeyring(info)
 		}
 
-		signingKey, err := v.ValidateCommit(info.Version.CommitHash())
+		signingKey, err := v.validateCommitHistory(info.Version.CommitHash())
 		if err != nil {
 			return nil, errors.Wrapf(err, "invalid identity %s (%s) commit %s", info.Identity.Id(), info.Identity.Email(), info.Version.CommitHash())
 		}
@@ -250,30 +241,18 @@ func (v *Validator) checkCommitForKey(hash repository.Hash) error {
 		return errors.New("commit contains an identity but no key")
 	}
 
-	e := &openpgp.Entity{
-		PrimaryKey: keys[0].PublicKey(),
-		Identities: make(map[string]*openpgp.Identity),
-	}
-	uid := packet.NewUserId(identity.Name(), "", identity.Email())
-	isPrimaryId := true
-	e.Identities[uid.Id] = &openpgp.Identity{
-		Name:   uid.Id,
-		UserId: uid,
-		SelfSignature: &packet.Signature{
-			CreationTime:    identity.LastModification().Time(),
-			SigType:         packet.SigTypePositiveCert,
-			PubKeyAlgo:      packet.PubKeyAlgoRSA,
-			Hash:            crypto.SHA256,
-			KeyLifetimeSecs: nil,
-			IsPrimaryId:     &isPrimaryId,
-			FlagsValid:      true,
-			FlagSign:        true,
-			FlagCertify:     true,
-			IssuerKeyId:     &e.PrimaryKey.KeyId,
+	// Create a dummy version containing only the necessary information to add a key to the keyring
+	dummyVersion := &versionInfo{
+		Identity:  identity,
+		KeysAdded: keys,
+		Commit: &object.Commit{
+			Committer: object.Signature{
+				When: identity.LastModification().Time(),
+			},
 		},
 	}
 
-	v.keyring = append(v.keyring, e)
+	v.updateKeyring(dummyVersion)
 
 	if v.FirstKey == nil {
 		v.FirstKey = keys[0]
@@ -282,8 +261,7 @@ func (v *Validator) checkCommitForKey(hash repository.Hash) error {
 	return nil
 }
 
-// ValidateCommit checks the commit signature along with the key's expire time,
-// after checking all the parents recursively.
+// ValidateCommit checks the commit signature along with the key's expire time.
 // Returns the pubkey used to sign the specified commit, or an error.
 func (v *Validator) ValidateCommit(hash repository.Hash) (*packet.PublicKey, error) {
 	if v.checkedCommits[hash] {
@@ -295,17 +273,40 @@ func (v *Validator) ValidateCommit(hash repository.Hash) (*packet.PublicKey, err
 		return nil, err
 	}
 
-	for _, h := range commit.ParentHashes {
-		_, err = v.ValidateCommit(repository.Hash(h.String()))
+	if v.FirstKey == nil {
+		// We have no FirstKey, meaning it's a fresh repo and there are no Identities in it.
+		// Since this commit has no parents, assume it's an Identity commit and load it as such.
+		// Note further commits changing Identities will be verified but not loaded.
+		err = v.checkCommitForKey(hash)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if v.FirstKey == nil {
-		// if our validator contains no key, check if this commit contains an identity with a key
-		// so we can validate our self
-		err = v.checkCommitForKey(hash)
+	signingKey, err := v.verifyCommitSignature(commit)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid signature")
+	}
+
+	v.checkedCommits[hash] = true
+	return signingKey, nil
+}
+
+// validateCommitHistory checks the commit signature along with the key's expire time,
+// after checking all the parents recursively.
+// Returns the pubkey used to sign the specified commit, or an error.
+func (v *Validator) validateCommitHistory(hash repository.Hash) (*packet.PublicKey, error) {
+	if v.checkedCommits[hash] {
+		return nil, nil
+	}
+
+	commit, err := v.backend.ResolveCommit(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, h := range commit.ParentHashes {
+		_, err = v.validateCommitHistory(repository.Hash(h.String()))
 		if err != nil {
 			return nil, err
 		}

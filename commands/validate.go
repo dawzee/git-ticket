@@ -31,6 +31,7 @@ func runValidate(env *Env, args []string) error {
 		return err
 	}
 
+	// If there is no FirstKey it means the repository has no Identities.
 	if validator.FirstKey != nil {
 		fmt.Printf("first commit signed with key: %s\n", validator.FirstKey.Fingerprint())
 	}
