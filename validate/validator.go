@@ -264,10 +264,6 @@ func (v *Validator) checkCommitForKey(hash repository.Hash) error {
 // ValidateCommit checks the commit signature along with the key's expire time.
 // Returns the pubkey used to sign the specified commit, or an error.
 func (v *Validator) ValidateCommit(hash repository.Hash) (*packet.PublicKey, error) {
-	if v.checkedCommits[hash] {
-		return nil, nil
-	}
-
 	commit, err := v.backend.ResolveCommit(hash)
 	if err != nil {
 		return nil, err
@@ -288,7 +284,6 @@ func (v *Validator) ValidateCommit(hash repository.Hash) (*packet.PublicKey, err
 		return nil, errors.Wrap(err, "invalid signature")
 	}
 
-	v.checkedCommits[hash] = true
 	return signingKey, nil
 }
 
