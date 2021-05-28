@@ -44,7 +44,6 @@ func newUserKeyAddCommand() *cobra.Command {
 	return cmd
 }
 
-
 func runUserKeyAdd(env *Env, opts userKeyAddOptions, args []string) error {
 	id, args, err := ResolveUser(env.backend, args)
 	if err != nil {
@@ -78,7 +77,7 @@ func runUserKeyAdd(env *Env, opts userKeyAddOptions, args []string) error {
 		return err
 	}
 
-	validator, err := validate.NewValidator(env.backend)
+	validator, err := validate.NewValidator(env.repo, env.backend)
 	if err != nil {
 		return errors.Wrap(err, "failed to create validator")
 	}
@@ -94,5 +93,3 @@ func runUserKeyAdd(env *Env, opts userKeyAddOptions, args []string) error {
 
 	return id.Commit()
 }
-
-

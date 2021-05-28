@@ -20,25 +20,24 @@ import (
 	"github.com/daedaleanai/git-ticket/cache"
 	"github.com/daedaleanai/git-ticket/identity"
 	"github.com/daedaleanai/git-ticket/repository"
-	"github.com/daedaleanai/git-ticket/util/lamport"
 )
 
 type Validator struct {
+	repo    repository.ClockedRepo
 	backend *cache.RepoCache
 
 	// FirstKey is the key used to sign the first commit.
 	FirstKey *identity.Key
 
 	// versions holds all the Identity Versions ordered by lamport time.
-	versions       []*versionInfo
+	versions []*versionInfo
 	// keyring holds all the current and past keys along with their expire time.
-	keyring        openpgp.EntityList
+	keyring openpgp.EntityList
 	// keyCommit maps the key id to the commit which introduced that key.
-	keyCommit      map[uint64]*object.Commit
+	keyCommit map[uint64]*object.Commit
 	// checkedCommits holds the valid already-checked commits.
 	checkedCommits map[repository.Hash]bool
 }
-
 
 // versionInfo contains details about a Version of an Identity, including
 // the added and removed keys, if any.
@@ -56,17 +55,17 @@ func (a ByLamportTime) Len() int           { return len(a) }
 func (a ByLamportTime) Less(i, j int) bool { return a[i].Version.Time() < a[j].Version.Time() }
 func (a ByLamportTime) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
-
 // NewValidator creates a validator for the current identities snapshot.
 // If identities are changed a new Validator instance should be used.
 //
 // The returned instance can be used to verify multiple git refs
 // from the main repository against the keychain built from the
 // identities snapshot loaded initially.
-func NewValidator(backend *cache.RepoCache) (*Validator, error) {
+func NewValidator(repo repository.ClockedRepo, backend *cache.RepoCache) (*Validator, error) {
 	var err error
 
 	v := &Validator{
+		repo:           repo,
 		backend:        backend,
 		keyring:        make(openpgp.EntityList, 0),
 		keyCommit:      make(map[uint64]*object.Commit),
@@ -79,14 +78,6 @@ func NewValidator(backend *cache.RepoCache) (*Validator, error) {
 	}
 
 	sort.Sort(ByLamportTime(v.versions))
-
-	clock := lamport.NewMemClock()
-	for i, version := range v.versions {
-		if clock.Time() != version.Version.Time() {
-			return nil, fmt.Errorf("unexpected lamport time for version at position %d: %d in commit %s", i, clock.Time(), version.Version.CommitHash())
-		}
-		clock.Increment()
-	}
 
 	v.FirstKey, err = v.validateIdentities()
 	if err != nil {
@@ -175,7 +166,7 @@ func (v *Validator) validateIdentities() (*identity.Key, error) {
 			v.updateKeyring(info)
 		}
 
-		signingKey, err := v.ValidateCommit(info.Version.CommitHash())
+		signingKey, err := v.validateCommitHistory(info.Version.CommitHash())
 		if err != nil {
 			return nil, errors.Wrapf(err, "invalid identity %s (%s) commit %s", info.Identity.Id(), info.Identity.Email(), info.Version.CommitHash())
 		}
@@ -214,7 +205,6 @@ func (v *Validator) updateKeyring(info *versionInfo) {
 			PrimaryKey: key.PublicKey(),
 			Identities: make(map[string]*openpgp.Identity),
 		}
-
 		creationTime := info.Commit.Committer.When
 		uid := packet.NewUserId(info.Identity.Name(), "", info.Identity.Email())
 		isPrimaryId := true
@@ -239,10 +229,68 @@ func (v *Validator) updateKeyring(info *versionInfo) {
 	}
 }
 
-// ValidateCommit checks the commit signature along with the key's expire time,
-// after checking all the parents recursively.
+// checkCommitForKey looks to see if the commit contains a git ticket identity update including key, if it does
+// then add the key to the keyring
+func (v *Validator) checkCommitForKey(hash repository.Hash) error {
+	identity, err := identity.ReadCommit(v.repo, hash)
+	if err != nil {
+		return err
+	}
+	keys := identity.Keys()
+	if len(keys) == 0 {
+		return errors.New("commit contains an identity but no key")
+	}
+
+	// Create a dummy version containing only the necessary information to add a key to the keyring
+	dummyVersion := &versionInfo{
+		Identity:  identity,
+		KeysAdded: keys,
+		Commit: &object.Commit{
+			Committer: object.Signature{
+				When: identity.LastModification().Time(),
+			},
+		},
+	}
+
+	v.updateKeyring(dummyVersion)
+
+	if v.FirstKey == nil {
+		v.FirstKey = keys[0]
+	}
+
+	return nil
+}
+
+// ValidateCommit checks the commit signature along with the key's expire time.
 // Returns the pubkey used to sign the specified commit, or an error.
 func (v *Validator) ValidateCommit(hash repository.Hash) (*packet.PublicKey, error) {
+	commit, err := v.backend.ResolveCommit(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	if v.FirstKey == nil {
+		// We have no FirstKey, meaning it's a fresh repo and there are no Identities in it.
+		// Since this commit has no parents, assume it's an Identity commit and load it as such.
+		// Note further commits changing Identities will be verified but not loaded.
+		err = v.checkCommitForKey(hash)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	signingKey, err := v.verifyCommitSignature(commit)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid signature")
+	}
+
+	return signingKey, nil
+}
+
+// validateCommitHistory checks the commit signature along with the key's expire time,
+// after checking all the parents recursively.
+// Returns the pubkey used to sign the specified commit, or an error.
+func (v *Validator) validateCommitHistory(hash repository.Hash) (*packet.PublicKey, error) {
 	if v.checkedCommits[hash] {
 		return nil, nil
 	}
@@ -253,7 +301,7 @@ func (v *Validator) ValidateCommit(hash repository.Hash) (*packet.PublicKey, err
 	}
 
 	for _, h := range commit.ParentHashes {
-		_, err = v.ValidateCommit(repository.Hash(h.String()))
+		_, err = v.validateCommitHistory(repository.Hash(h.String()))
 		if err != nil {
 			return nil, err
 		}

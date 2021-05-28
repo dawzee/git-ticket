@@ -28,6 +28,8 @@ func benchmarkReadBugs(bugNumber int, t *testing.B) {
 	repo := repository.CreateTestRepo(false)
 	defer repository.CleanupTestRepos(repo)
 
+	repository.SetupSigningKey(t, repo, "a@e.org")
+
 	random_bugs.FillRepoWithSeed(repo, bugNumber, 42)
 	t.ResetTimer()
 

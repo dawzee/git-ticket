@@ -26,12 +26,15 @@ func newValidateCommand() *cobra.Command {
 }
 
 func runValidate(env *Env, args []string) error {
-	validator, err := validate.NewValidator(env.backend)
+	validator, err := validate.NewValidator(env.repo, env.backend)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("first commit signed with key: %s\n", validator.FirstKey.Fingerprint())
+	// If there is no FirstKey it means the repository has no Identities.
+	if validator.FirstKey != nil {
+		fmt.Printf("first commit signed with key: %s\n", validator.FirstKey.Fingerprint())
+	}
 
 	var refErr error
 	for _, ref := range args {
