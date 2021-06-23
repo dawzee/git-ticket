@@ -34,7 +34,7 @@ type GitRepo struct {
 
 	// memoized go-git repo representing the same repository,
 	// for reading commits.
-	repo        *goGit.Repository
+	repo *goGit.Repository
 }
 
 // LocalConfig give access to the repository scoped configuration
@@ -51,12 +51,15 @@ func (repo *GitRepo) GlobalConfig() Config {
 func (repo *GitRepo) runGitCommandWithIO(stdin io.Reader, stdout, stderr io.Writer, args ...string) error {
 	// make sure that the working directory for the command
 	// always exist, in particular when running "git init".
-	path := strings.TrimSuffix(repo.path, ".git")
+	repopath := repo.path
+	if path.Base(repopath) == ".git" {
+		repopath = strings.TrimSuffix(repopath, ".git")
+	}
 
 	// fmt.Printf("[%s] Running git %s\n", path, strings.Join(args, " "))
 
 	cmd := exec.Command("git", args...)
-	cmd.Dir = path
+	cmd.Dir = repopath
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
